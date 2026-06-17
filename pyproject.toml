@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastapi_mcp_agent_service"
+version = "0.1.0"
+description = "Production-ready AI Agent service with FastAPI, LangGraph, and MCP tools"
+readme = "README.md"
+license = {text = "MIT"}
+python = ">=3.11"
+
+dependencies = [
+    "fastapi==0.104.1",
+    "uvicorn==0.24.0",
+    "pydantic==2.5.0",
+    "python-dotenv==1.0.0",
+    "langgraph==0.0.40",
+    "langchain==0.1.0",
+    "langchain-core==0.1.0",
+    "sqlalchemy==2.0.23",
+    "psycopg2-binary==2.9.9",
+    "alembic==1.13.0",
+    "aioredis==2.0.1",
+    "celery==5.3.4",
+    "httpx==0.25.2",
+    "requests==2.31.0",
+    "python-jose==3.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==7.4.3",
+    "pytest-asyncio==0.21.1",
+    "pytest-cov==4.1.0",
+    "black==23.12.1",
+    "flake8==6.1.0",
+    "mypy==1.7.1",
+]
+
+[tool.black]
+line-length = 88
+
+[tool.flake8]
+max-line-length = 88
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
