@@ -5,7 +5,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Float, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 

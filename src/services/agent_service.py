@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+import time
 from typing import Any, AsyncGenerator, Dict, Optional
 
 from src.agents.orchestrator import orchestrator
+from src.config.logger import logger
+from src.services.task_service import task_service
 
 
 class AgentService:
@@ -13,12 +17,29 @@ class AgentService:
         tools: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        return await orchestrator.execute(
-            query=query,
-            agent_type=agent_type,
-            tools=tools,
-            **kwargs,
-        )
+        task = await task_service.create_task(query, agent_type, tools)
+        task_id = task.task_id
+        await task_service.update_task_status(task_id, "running")
+        start = time.time()
+        try:
+            result = await orchestrator.execute(query=query, agent_type=agent_type, tools=tools, **kwargs)
+            elapsed = time.time() - start
+            await task_service.save_result(task_id, result, elapsed)
+            return {
+                "task_id": task_id,
+                "status": "completed",
+                "result": result,
+                "execution_time": elapsed,
+            }
+        except Exception as e:
+            elapsed = time.time() - start
+            await task_service.save_error(task_id, str(e))
+            return {
+                "task_id": task_id,
+                "status": "failed",
+                "error": str(e),
+                "execution_time": elapsed,
+            }
 
     async def stream(
         self,
@@ -26,12 +47,29 @@ class AgentService:
         agent_type: str,
         **kwargs: Any,
     ) -> AsyncGenerator[str, None]:
-        yield f"Starting {agent_type} agent...\n"
-        yield f"Processing query: {query}\n"
-        yield "Done.\n"
+        task = await task_service.create_task(query, agent_type)
+        task_id = task.task_id
+        await task_service.update_task_status(task_id, "running")
+
+        yield f"data: {{\"event\": \"start\", \"task_id\": \"{task_id}\", \"agent\": \"{agent_type}\"}}\n\n"
+        yield f"data: {{\"event\": \"status\", \"message\": \"Processing query: {query}\"}}\n\n"
+
+        try:
+            result = await orchestrator.execute(query=query, agent_type=agent_type, **kwargs)
+            await task_service.save_result(task_id, result)
+            yield f"data: {{\"event\": \"result\", \"task_id\": \"{task_id}\", \"result\": {result}}}\n\n"
+            yield f"data: {{\"event\": \"done\", \"task_id\": \"{task_id}\", \"status\": \"completed\"}}\n\n"
+        except Exception as e:
+            await task_service.save_error(task_id, str(e))
+            yield f"data: {{\"event\": \"error\", \"task_id\": \"{task_id}\", \"error\": \"{e}\"}}\n\n"
 
     async def cancel(self, task_id: str) -> bool:
-        return True
+        task = await task_service.get_task(task_id)
+        if task and task.status in ("pending", "running"):
+            await task_service.update_task_status(task_id, "cancelled")
+            logger.info(f"Task cancelled: {task_id}")
+            return True
+        return False
 
 
 agent_service = AgentService()
