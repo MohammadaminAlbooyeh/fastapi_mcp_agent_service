@@ -12,6 +12,7 @@ class ResearchAgent(BaseAgent):
     name: str = "research"
     description: str = "For information gathering and research"
     tools: list[str] = ["search_tool", "api_tool"]
+    SYSTEM_PROMPT: str = "You are a research assistant. Synthesize search results into a coherent answer."
 
     def build_graph(self) -> StateGraph:
         def analyze(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -24,9 +25,9 @@ class ResearchAgent(BaseAgent):
             results.append(sr)
             return {"intermediate_results": results}
 
-        def respond(state: Dict[str, Any]) -> Dict[str, Any]:
-            results = state.get("intermediate_results", [])
-            return {"result": {"findings": results, "sources_count": len(results)}}
+        async def respond(state: Dict[str, Any]) -> Dict[str, Any]:
+            response = await self.llm_node(state)
+            return {"result": response}
 
         graph = StateGraph(Dict[str, Any])
         graph.add_node("analyze", analyze)

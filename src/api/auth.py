@@ -39,3 +39,12 @@ def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(s
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         )
+
+
+async def authenticate_with_api_key(api_key: str) -> Dict[str, Any]:
+    if api_key == settings.api_key:
+        return {"sub": "api-user", "role": "user"}
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid API key",
+    )

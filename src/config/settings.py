@@ -23,8 +23,11 @@ class Settings(BaseSettings):
     search_api_key: str = ""
 
     secret_key: str = "change-me-in-production"
+    api_key: str = "dev-api-key"
     algorithm: str = "HS256"
     access_token_expiry: int = 3600
+
+    webhook_url: str = ""
 
     allowed_origins: str = "http://localhost:3000,http://localhost:8000"
 

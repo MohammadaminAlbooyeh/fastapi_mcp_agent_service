@@ -3,19 +3,21 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from src.api.auth import create_access_token
+from src.api.auth import authenticate_with_api_key, create_access_token, verify_token
 from src.api.exceptions import AgentException, agent_exception_handler
 from src.api.middleware import ErrorHandlingMiddleware
 from src.api.routes.agent import router as agent_router
 from src.api.routes.health import router as health_router
-from src.api.routes.status import router as status_router
 from src.api.routes.tools import router as tools_router
 from src.config.logger import logger
 from src.config.settings import settings
 from src.services.cache_service import cache_service
+
+security_basic = HTTPBasic()
 
 
 @asynccontextmanager
@@ -47,11 +49,11 @@ app.add_exception_handler(AgentException, agent_exception_handler)
 
 app.include_router(health_router)
 app.include_router(agent_router)
-app.include_router(status_router)
 app.include_router(tools_router)
 
 
 @app.post("/api/v1/auth/token")
-async def get_token() -> dict:
-    token = create_access_token({"sub": "api-user", "role": "user"})
+async def get_token(credentials: HTTPBasicCredentials = Depends(security_basic)) -> dict:
+    await authenticate_with_api_key(credentials.password)
+    token = create_access_token({"sub": credentials.username, "role": "user"})
     return {"access_token": token, "token_type": "bearer"}

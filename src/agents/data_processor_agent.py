@@ -12,6 +12,7 @@ class DataProcessorAgent(BaseAgent):
     name: str = "processor"
     description: str = "For data transformation and analysis"
     tools: list[str] = ["file_tool", "calculator_tool"]
+    SYSTEM_PROMPT: str = "You are a data processing assistant. Explain calculations and file operations clearly."
 
     def build_graph(self) -> StateGraph:
         def analyze(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -20,10 +21,11 @@ class DataProcessorAgent(BaseAgent):
         async def execute_calculations(state: Dict[str, Any]) -> Dict[str, Any]:
             calc = tools_registry.get("calculator_tool")
             result = await calc.execute(expression=state.get("query", ""))
-            return {"calculation_result": result}
+            return {"intermediate_results": [result]}
 
-        def respond(state: Dict[str, Any]) -> Dict[str, Any]:
-            return {"result": {"calculation": state.get("calculation_result", {}), "status": "processed"}}
+        async def respond(state: Dict[str, Any]) -> Dict[str, Any]:
+            response = await self.llm_node(state)
+            return {"result": response}
 
         graph = StateGraph(Dict[str, Any])
         graph.add_node("analyze", analyze)

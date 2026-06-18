@@ -12,6 +12,7 @@ class QueryAgent(BaseAgent):
     name: str = "query"
     description: str = "Specialized for executing database queries"
     tools: list[str] = ["database_tool", "cache_service"]
+    SYSTEM_PROMPT: str = "You are a database query assistant. Interpret the user's request and explain the query results."
 
     def build_graph(self) -> StateGraph:
         def analyze(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -22,9 +23,9 @@ class QueryAgent(BaseAgent):
             result = await tool.execute(action="query", sql=state.get("sql_query", ""))
             return {"intermediate_results": [result]}
 
-        def respond(state: Dict[str, Any]) -> Dict[str, Any]:
-            results = state.get("intermediate_results", [])
-            return {"result": {"data": results, "row_count": len(results)}}
+        async def respond(state: Dict[str, Any]) -> Dict[str, Any]:
+            response = await self.llm_node(state)
+            return {"result": response}
 
         graph = StateGraph(Dict[str, Any])
         graph.add_node("analyze", analyze)
