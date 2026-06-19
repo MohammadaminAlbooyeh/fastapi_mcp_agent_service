@@ -9,8 +9,11 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from src.api.auth import authenticate_with_api_key, create_access_token, verify_token
 from src.api.exceptions import AgentException, agent_exception_handler
+from src.api.metrics import MetricsMiddleware, metrics_endpoint
 from src.api.middleware import ErrorHandlingMiddleware
+from src.api.rate_limiter import RateLimitMiddleware
 from src.api.routes.agent import router as agent_router
+from src.api.routes.approval import router as approval_router
 from src.api.routes.health import router as health_router
 from src.api.routes.tools import router as tools_router
 from src.config.logger import logger
@@ -44,12 +47,20 @@ app.add_middleware(
 )
 
 app.add_middleware(ErrorHandlingMiddleware)
+app.add_middleware(RateLimitMiddleware, max_requests=100, window_seconds=60)
+app.add_middleware(MetricsMiddleware)
 
 app.add_exception_handler(AgentException, agent_exception_handler)
 
 app.include_router(health_router)
 app.include_router(agent_router)
 app.include_router(tools_router)
+app.include_router(approval_router)
+
+
+@app.get("/metrics")
+async def get_metrics():
+    return metrics_endpoint(request=None)
 
 
 @app.post("/api/v1/auth/token")

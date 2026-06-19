@@ -12,6 +12,7 @@ openai>=1.0.0
 # Database
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
+asyncpg>=0.29.0
 alembic==1.13.0
 
 # Async & Caching
@@ -21,6 +22,7 @@ celery==5.3.4
 # Utilities
 httpx==0.25.2
 python-jose==3.3.0
+prometheus-client>=0.19.0
 
 # Development & Testing
 pytest==7.4.3

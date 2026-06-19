@@ -34,12 +34,12 @@ class APITool(BaseTool):
                 "body": response.text,
             }
 
-    async def call_graphql(self, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def call_graphql(self, endpoint: str, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         payload: Dict[str, Any] = {"query": query}
         if variables:
             payload["variables"] = variables
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post("", json=payload)
+            response = await client.post(endpoint, json=payload)
             return {
                 "status_code": response.status_code,
                 "body": response.text,
@@ -58,7 +58,7 @@ class APITool(BaseTool):
             elif action == "rest_api":
                 result = await self.call_rest_api(kwargs.get("endpoint", ""), kwargs.get("params"))
             elif action == "graphql":
-                result = await self.call_graphql(kwargs.get("query", ""), kwargs.get("variables"))
+                result = await self.call_graphql(kwargs.get("endpoint", ""), kwargs.get("query", ""), kwargs.get("variables"))
             else:
                 return {"tool": self.name, "error": f"Unknown action: {action}"}
             return {"tool": self.name, "action": action, "result": result}
