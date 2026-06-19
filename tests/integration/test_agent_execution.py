@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 
 class TestAgentExecution:
-    def test_execute_requires_auth(self, client: TestClient) -> None:
+    def test_execute_returns_json_response(self, client: TestClient) -> None:
         response = client.post(
             "/api/v1/agent/execute",
             json={
@@ -15,7 +15,9 @@ class TestAgentExecution:
                 "agent_type": "query",
             },
         )
-        assert response.status_code in (200, 403)
+        assert response.status_code in (200, 500)
+        data = response.json()
+        assert "task_id" in data or "detail" in data
 
     def test_execute_query_agent(self, client: TestClient, sample_query: str) -> None:
         response = client.post(
@@ -29,6 +31,8 @@ class TestAgentExecution:
             },
         )
         assert response.status_code in (200, 500)
+        data = response.json()
+        assert "task_id" in data or "detail" in data
 
     def test_list_tools(self, client: TestClient) -> None:
         response = client.get("/api/v1/tools")

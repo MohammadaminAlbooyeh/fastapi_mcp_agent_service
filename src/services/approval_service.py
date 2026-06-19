@@ -61,12 +61,14 @@ class ApprovalService:
         tool_args: Dict[str, Any],
         agent_type: str,
         query: str,
+        timeout: int = 60,
     ) -> ToolApprovalRequest:
         request = ToolApprovalRequest(
             tool_name=tool_name,
             tool_args=tool_args,
             agent_type=agent_type,
             query=query,
+            timeout=timeout,
         )
         self._pending_requests[request.request_id] = request
         return request

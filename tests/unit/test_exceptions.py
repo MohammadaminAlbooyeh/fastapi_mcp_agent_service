@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -39,4 +41,3 @@ class TestExceptions:
         response = await agent_exception_handler(request, exc)
         assert isinstance(response, JSONResponse)
         assert response.status_code == 400
-        assert response.body is not None

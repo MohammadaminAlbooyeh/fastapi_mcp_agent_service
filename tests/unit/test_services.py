@@ -100,10 +100,7 @@ class TestTaskService:
 
     @pytest.mark.asyncio
     async def test_create_task(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            "src.services.task_service.CRUD",
-            _MockCRUD,
-        )
+        monkeypatch.setattr("src.services.task_service.CRUD", _MockCRUD)
         monkeypatch.setattr("src.services.task_service.SessionLocal", MagicMock)
 
         task = await self.service.create_task("test query", "query", ["database_tool"])
@@ -224,6 +221,20 @@ class TestCacheService:
         assert self.service._client is None
 
 
+class _MockAsyncContextManager:
+    def __init__(self, post_return):
+        self._post_return = post_return
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        pass
+
+    def post(self, *args, **kwargs):
+        return self._post_return
+
+
 class TestNotificationService:
     def setup_method(self) -> None:
         self.service = NotificationService()
@@ -237,36 +248,60 @@ class TestNotificationService:
     @pytest.mark.asyncio
     async def test_send_event_success(self, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr("src.services.notification_service.settings.webhook_url", "https://example.com/hook")
-        mock_post = AsyncMock()
-        mock_post.return_value.raise_for_status.return_value = None
-        monkeypatch.setattr("httpx.AsyncClient.post", mock_post)
 
-        result = await self.service.send_event("test.event", {"key": "value"})
-        assert result is True
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+
+        async def _mock_post(*args, **kwargs):
+            return mock_response
+
+        mock_client = _MockAsyncContextManager(_mock_post())
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            result = await self.service.send_event("test.event", {"key": "value"})
+            assert result is True
 
     @pytest.mark.asyncio
     async def test_send_event_failure(self, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr("src.services.notification_service.settings.webhook_url", "https://example.com/hook")
-        mock_post = AsyncMock(side_effect=Exception("Network error"))
-        monkeypatch.setattr("httpx.AsyncClient.post", mock_post)
 
-        result = await self.service.send_event("test.event", {"key": "value"})
-        assert result is False
+        async def _mock_post(*args, **kwargs):
+            raise Exception("Network error")
+
+        mock_client = _MockAsyncContextManager(_mock_post())
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            result = await self.service.send_event("test.event", {"key": "value"})
+            assert result is False
 
     @pytest.mark.asyncio
     async def test_notify_task_completed(self, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr("src.services.notification_service.settings.webhook_url", "https://example.com/hook")
-        mock_post = AsyncMock()
-        monkeypatch.setattr("httpx.AsyncClient.post", mock_post)
 
-        result = await self.service.notify_task_completed("task-123", {"answer": 42})
-        assert result is True
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+
+        async def _mock_post(*args, **kwargs):
+            return mock_response
+
+        mock_client = _MockAsyncContextManager(_mock_post())
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            result = await self.service.notify_task_completed("task-123", {"answer": 42})
+            assert result is True
 
     @pytest.mark.asyncio
     async def test_notify_task_failed(self, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr("src.services.notification_service.settings.webhook_url", "https://example.com/hook")
-        mock_post = AsyncMock()
-        monkeypatch.setattr("httpx.AsyncClient.post", mock_post)
 
-        result = await self.service.notify_task_failed("task-123", "error message")
-        assert result is True
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+
+        async def _mock_post(*args, **kwargs):
+            return mock_response
+
+        mock_client = _MockAsyncContextManager(_mock_post())
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            result = await self.service.notify_task_failed("task-123", "error message")
+            assert result is True
