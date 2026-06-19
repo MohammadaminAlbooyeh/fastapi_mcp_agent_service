@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: agent_service
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U user -d agent_service"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+    env:
+      DATABASE_URL: postgresql://user:password@127.0.0.1:5432/agent_service
+      REDIS_URL: redis://127.0.0.1:6379/0
+      ENVIRONMENT: development
+      SECRET_KEY: test-secret
+      API_KEY: dev-api-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - run: pip install -r requirements.txt
+      - run: pip install -e .
+      - run: pytest -q --cov=src --cov-report=xml
+      - run: black src tests
+      - run: flake8 src tests --max-line-length=88 --ignore=E501,W503
+      - run: mypy src --show-error-codes
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml

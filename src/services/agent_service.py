@@ -7,7 +7,6 @@ from typing import Any, AsyncGenerator, Dict, Optional
 from src.agents.orchestrator import orchestrator
 from src.config.logger import logger
 from src.services.approval_service import approval_service
-from src.services.llm_service import llm_service
 from src.services.memory_service import agent_memory_manager
 from src.services.notification_service import notification_service
 from src.services.task_service import task_service

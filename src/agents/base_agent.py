@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List
 
 from langgraph.graph import StateGraph
 
@@ -20,15 +20,25 @@ class BaseAgent:
     async def llm_node(self, state: Dict[str, Any]) -> Dict[str, Any]:
         query = state.get("query", "")
         results = state.get("intermediate_results", [])
-        prompt = f"Query: {query}\n\nTool results: {results}\n\nProvide a clear response based on the above."
+        prompt = (
+            "Query: {query}\n\n"
+            "Tool results: {results}\n\n"
+            "Provide a clear response based on the above."
+        ).format(query=query, results=results)
         response = await llm_service.generate(prompt, system_prompt=self.SYSTEM_PROMPT)
         return {"llm_response": response}
 
     async def stream_llm(self, state: Dict[str, Any]) -> AsyncGenerator[str, None]:
         query = state.get("query", "")
         results = state.get("intermediate_results", [])
-        prompt = f"Query: {query}\n\nTool results: {results}\n\nProvide a clear response."
-        async for chunk in llm_service.stream_generate(prompt, system_prompt=self.SYSTEM_PROMPT):
+        prompt = (
+            "Query: {query}\n\n"
+            "Tool results: {results}\n\n"
+            "Provide a clear response."
+        ).format(query=query, results=results)
+        async for chunk in llm_service.stream_generate(
+            prompt, system_prompt=self.SYSTEM_PROMPT
+        ):
             yield chunk
 
     async def execute(self, query: str, **kwargs: Any) -> Dict[str, Any]:

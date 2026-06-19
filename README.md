@@ -85,13 +85,22 @@ docker-compose -f docker/docker-compose.yml up -d --build
 
 The service exposes the following endpoint groups:
 
-- **`GET /health`** — Health check endpoint
-- **`POST /agents/execute`** — Execute an agent with a task
-- **`GET /agents/status/{task_id}`** — Get task execution status
-- **`GET /tools`** — List available MCP tools
-- **`POST /tools/{tool_name}`** — Execute a specific tool
+- **`GET /api/v1/health`** — Service health check
+- **`GET /api/v1/health/detailed`** — Detailed dependency health
+- **`POST /api/v1/agent/execute`** — Execute an agent task
+- **`POST /api/v1/agent/stream`** — Stream agent output
+- **`GET /api/v1/agent/status/{task_id}`** — Get task status
+- **`GET /api/v1/agent/result/{task_id}`** — Get task result
+- **`POST /api/v1/agent/cancel/{task_id}`** — Cancel a running task
+- **`GET /api/v1/tools`** — List available MCP tools
+- **`GET /api/v1/tools/{tool_name}`** — Get tool details
+- **`POST /api/v1/tools/test`** — Test a tool
+- **`GET /api/v1/approval/requests`** — List pending approval requests
+- **`POST /api/v1/approval/requests/{request_id}/approve`** — Approve a request
+- **`POST /api/v1/approval/requests/{request_id}/reject`** — Reject a request
+- **`POST /api/v1/auth/token`** — Get JWT/bearer access token
 
-See [API Documentation](docs/API.md) for detailed endpoint specifications.
+For the full contract, see [API Documentation](docs/API.md).
 
 ## Architecture
 

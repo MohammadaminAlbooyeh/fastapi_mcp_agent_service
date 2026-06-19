@@ -3,11 +3,11 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from src.api.auth import authenticate_with_api_key, create_access_token, verify_token
+from src.api.auth import authenticate_with_api_key, create_access_token
 from src.api.exceptions import AgentException, agent_exception_handler
 from src.api.metrics import MetricsMiddleware, metrics_endpoint
 from src.api.middleware import ErrorHandlingMiddleware
@@ -33,7 +33,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title="FastAPI MCP Agent Service",
-    description="Production-ready AI Agent service with FastAPI, LangGraph, and MCP tools",
+    description=(
+        "Production-ready AI Agent service with FastAPI, LangGraph, and MCP tools"
+    ),
     version="0.1.0",
     lifespan=lifespan,
 )
