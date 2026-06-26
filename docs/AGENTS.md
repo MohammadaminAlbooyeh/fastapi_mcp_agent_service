@@ -3,7 +3,7 @@
 ## Query Agent
 - **Name:** `query`
 - **Purpose:** Execute database queries
-- **Tools:** database_tool, cache_service
+- **Tools:** database_tool
 
 ## Data Processor Agent
 - **Name:** `processor`

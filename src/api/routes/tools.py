@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from typing import Any, Dict
+
+from fastapi import APIRouter, Body, HTTPException
 
 from src.mcp_tools.tools_registry import tools_registry
 from src.models.response import ToolResponse
@@ -28,5 +30,14 @@ async def get_tool_details(tool_name: str) -> ToolResponse:
 
 
 @router.post("/test")
-async def test_tool() -> dict:
-    return {"message": "Tool test endpoint"}
+async def test_tool(
+    tool_name: str = Body(..., description="Name of the tool to test"),
+    action: str = Body(..., description="Action to execute"),
+    params: Dict[str, Any] = Body(default={}, description="Parameters to pass"),
+) -> dict:
+    try:
+        tool = tools_registry.get(tool_name)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found")
+    result = await tool.execute(action=action, **params)
+    return {"tool": tool_name, "action": action, "result": result}

@@ -16,6 +16,7 @@ class TestApprovalService:
             tool_args={"sql": "SELECT * FROM users"},
             agent_type="query",
             query="Get all users",
+            task_id="test-task-1",
         )
         assert req.request_id is not None
         assert req.status == ApprovalStatus.PENDING
@@ -28,6 +29,7 @@ class TestApprovalService:
             tool_args={"query": "AI news"},
             agent_type="research",
             query="Search AI news",
+            task_id="test-task-2",
         )
         success = await self.service.approve_request(req.request_id)
         assert success is True
@@ -40,6 +42,7 @@ class TestApprovalService:
             tool_args={"action": "delete", "path": "/data"},
             agent_type="processor",
             query="Delete file",
+            task_id="test-task-3",
         )
         success = await self.service.reject_request(req.request_id, "Not authorized")
         assert success is True
@@ -57,15 +60,15 @@ class TestApprovalService:
 
     @pytest.mark.asyncio
     async def test_get_pending_requests(self) -> None:
-        await self.service.request_approval("tool1", {}, "agent1", "query1")
-        await self.service.request_approval("tool2", {}, "agent2", "query2")
+        await self.service.request_approval("tool1", {}, "agent1", "query1", "task-p1")
+        await self.service.request_approval("tool2", {}, "agent2", "query2", "task-p2")
 
         pending = self.service.get_pending_requests()
         assert len(pending) == 2
 
     @pytest.mark.asyncio
     async def test_get_pending_after_approval(self) -> None:
-        req = await self.service.request_approval("tool1", {}, "agent1", "query1")
+        req = await self.service.request_approval("tool1", {}, "agent1", "query1", "task-pa1")
         await self.service.approve_request(req.request_id)
 
         pending = self.service.get_pending_requests()
@@ -78,6 +81,7 @@ class TestApprovalService:
             tool_args={},
             agent_type="agent",
             query="query",
+            task_id="test-task-4",
             timeout=5,
         )
         await self.service.approve_request(req.request_id)
@@ -91,6 +95,7 @@ class TestApprovalService:
             tool_args={},
             agent_type="agent",
             query="query",
+            task_id="test-task-5",
             timeout=5,
         )
         await self.service.reject_request(req.request_id)
@@ -104,6 +109,7 @@ class TestApprovalService:
             tool_args={},
             agent_type="agent",
             query="query",
+            task_id="test-task-6",
             timeout=0.1,
         )
         decision = await req.wait_for_decision()

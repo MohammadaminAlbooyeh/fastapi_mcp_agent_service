@@ -102,3 +102,40 @@ class DatabaseTool(BaseTool):
             return {"tool": self.name, "action": action, "result": result}
         except Exception as e:
             return {"tool": self.name, "action": action, "error": str(e)}
+
+    def get_schema(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": "Execute database queries and CRUD operations. Use 'query' for custom SQL, 'list' for reading tables, 'insert', 'update', and 'delete' for modifications.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["query", "insert", "update", "delete", "list"],
+                        "description": "The database operation to perform."
+                    },
+                    "sql": {
+                        "type": "string",
+                        "description": "SQL query to execute (used only with 'query' action)."
+                    },
+                    "table": {
+                        "type": "string",
+                        "description": "Table name (used with list, insert, update, delete)."
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "Record data for insert/update."
+                    },
+                    "id": {
+                        "type": "integer",
+                        "description": "Record ID for update/delete."
+                    },
+                    "filters": {
+                        "type": "object",
+                        "description": "Key-value filters for list action."
+                    }
+                },
+                "required": ["action"]
+            }
+        }

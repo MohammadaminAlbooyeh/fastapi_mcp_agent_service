@@ -33,6 +33,8 @@ class AgentService:
                     tool_args={"query": query, "tools": tools},
                     agent_type=agent_type,
                     query=query,
+                    task_id=task_id,
+                    timeout=kwargs.get("approval_timeout", 300),
                 )
                 decision = await req.wait_for_decision()
                 if decision.value != "approved":

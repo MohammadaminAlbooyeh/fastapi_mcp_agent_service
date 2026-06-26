@@ -15,8 +15,10 @@ def setup_logging() -> logging.Logger:
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
+    log_level = getattr(logging, settings.log_level.upper(), logging.INFO)
+
     stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.setLevel(logging.DEBUG)
+    stdout_handler.setLevel(log_level)
     stdout_handler.setFormatter(formatter)
 
     file_handler = RotatingFileHandler(
@@ -24,7 +26,7 @@ def setup_logging() -> logging.Logger:
         maxBytes=10 * 1024 * 1024,
         backupCount=5,
     )
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(log_level)
     file_handler.setFormatter(formatter)
 
     if not logger.handlers:

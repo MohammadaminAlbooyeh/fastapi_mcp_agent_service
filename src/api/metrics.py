@@ -76,7 +76,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             ACTIVE_REQUESTS.dec()
 
 
-def metrics_endpoint(request: Request) -> Response:
+def metrics_endpoint(request: Request | None = None) -> Response:
     return StarletteResponse(
         content=generate_latest(),
         media_type=CONTENT_TYPE_LATEST,

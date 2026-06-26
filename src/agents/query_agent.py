@@ -11,7 +11,7 @@ from src.mcp_tools.tools_registry import tools_registry
 class QueryAgent(BaseAgent):
     name: str = "query"
     description: str = "Specialized for executing database queries"
-    tools: list[str] = ["database_tool", "cache_service"]
+    tools: list[str] = ["database_tool"]
     SYSTEM_PROMPT: str = "You are a database query assistant. Interpret the user's request and explain the query results."
 
     def build_graph(self) -> StateGraph:

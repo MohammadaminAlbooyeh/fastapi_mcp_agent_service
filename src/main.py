@@ -22,6 +22,14 @@ from src.services.cache_service import cache_service
 
 security_basic = HTTPBasic()
 
+if settings.sentry_dsn:
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.environment,
+        traces_sample_rate=0.1 if settings.environment == "production" else 1.0,
+    )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -62,7 +70,7 @@ app.include_router(approval_router)
 
 @app.get("/metrics")
 async def get_metrics():
-    return metrics_endpoint(request=None)
+    return metrics_endpoint()
 
 
 @app.post("/api/v1/auth/token")
