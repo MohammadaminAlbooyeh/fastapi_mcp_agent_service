@@ -14,6 +14,9 @@ curl -X POST http://localhost:8000/api/v1/agent/execute \
   }'
 ```
 
+`query` must be 1–10,000 characters, `max_iterations` 1–20, and `timeout` 1–300
+seconds — values outside those ranges return a `422` validation error.
+
 ## Check Health
 
 ```bash

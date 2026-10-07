@@ -80,10 +80,12 @@ Execute an agent task synchronously.
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `agent_type` | string | yes | - | One of: `query`, `processor`, `research` |
-| `query` | string | yes | - | The task description or query |
+| `query` | string | yes | - | The task description or query (1–10,000 characters) |
 | `tools` | array[string] | no | `[]` | Allowed MCP tool names |
-| `max_iterations` | integer | no | `5` | Max agent loop iterations |
-| `timeout` | integer | no | `30` | Execution timeout in seconds |
+| `max_iterations` | integer | no | `5` | Max agent loop iterations (1–20) |
+| `timeout` | integer | no | `30` | Execution timeout in seconds (1–300) |
+
+Values outside these ranges, or an empty/oversized `query`, return `422 Unprocessable Entity`.
 
 **Response (200):**
 ```json
@@ -151,7 +153,16 @@ Get the final result of a completed task.
 
 ### `POST /api/v1/agent/cancel/{task_id}`
 
-Cancel a running task.
+Cancel a running task. Only tasks in `pending` or `running` status can be cancelled.
+
+**Request body (optional):**
+```json
+{
+  "reason": "user requested"
+}
+```
+`reason` defaults to `""` and may be omitted, or the request sent with no body at all.
+When given, it is recorded on the task as `"Cancelled: <reason>"`.
 
 **Response (200):**
 ```json

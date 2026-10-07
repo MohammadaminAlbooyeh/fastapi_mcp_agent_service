@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 from fastapi.testclient import TestClient
 
 
@@ -60,3 +62,67 @@ class TestAPIEndpoints:
             json={"query": "hi", "agent_type": "query", "timeout": 100_000},
         )
         assert response.status_code == 422
+
+    def test_cancel_with_reason_passes_it_through(self, client: TestClient) -> None:
+        with patch(
+            "src.api.routes.agent.agent_service.cancel", AsyncMock(return_value=True)
+        ) as mock_cancel:
+            response = client.post(
+                "/api/v1/agent/cancel/some-task-id",
+                json={"reason": "user requested"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "cancelled"
+        mock_cancel.assert_awaited_once_with("some-task-id", reason="user requested")
+
+    def test_cancel_without_body_works(self, client: TestClient) -> None:
+        with patch(
+            "src.api.routes.agent.agent_service.cancel", AsyncMock(return_value=True)
+        ) as mock_cancel:
+            response = client.post("/api/v1/agent/cancel/some-task-id")
+
+        assert response.status_code == 200
+        mock_cancel.assert_awaited_once_with("some-task-id", reason="")
+
+    def test_approve_request_passes_approver_through(self, client: TestClient) -> None:
+        with patch(
+            "src.api.routes.approval.approval_service.approve_request",
+            AsyncMock(return_value=True),
+        ) as mock_approve:
+            response = client.post(
+                "/api/v1/approval/requests/req-1/approve",
+                json={"approver": "alice"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "approved"
+        mock_approve.assert_awaited_once_with("req-1", approver="alice")
+
+    def test_reject_request_passes_approver_and_reason_through(
+        self, client: TestClient
+    ) -> None:
+        with patch(
+            "src.api.routes.approval.approval_service.reject_request",
+            AsyncMock(return_value=True),
+        ) as mock_reject:
+            response = client.post(
+                "/api/v1/approval/requests/req-1/reject",
+                json={"approver": "alice", "reason": "not authorized"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "rejected"
+        mock_reject.assert_awaited_once_with(
+            "req-1", approver="alice", reason="not authorized"
+        )
+
+    def test_approve_request_without_body_works(self, client: TestClient) -> None:
+        with patch(
+            "src.api.routes.approval.approval_service.approve_request",
+            AsyncMock(return_value=True),
+        ) as mock_approve:
+            response = client.post("/api/v1/approval/requests/req-1/approve")
+
+        assert response.status_code == 200
+        mock_approve.assert_awaited_once_with("req-1", approver="")

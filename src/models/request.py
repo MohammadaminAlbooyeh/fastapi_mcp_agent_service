@@ -14,4 +14,9 @@ class AgentExecuteRequest(BaseModel):
 
 
 class TaskCancelRequest(BaseModel):
-    reason: str
+    reason: str = ""
+
+
+class ApprovalDecisionRequest(BaseModel):
+    approver: str = ""
+    reason: str = ""

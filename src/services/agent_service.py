@@ -148,11 +148,14 @@ class AgentService:
             error = str(e) if settings.debug else "Agent execution failed"
             yield f"data: {json.dumps({'event': 'error', 'task_id': task_id, 'error': error})}\n\n"
 
-    async def cancel(self, task_id: str) -> bool:
+    async def cancel(self, task_id: str, reason: str = "") -> bool:
         task = await task_service.get_task(task_id)
         if task and task.status in ("pending", "running"):
-            await task_service.update_task_status(task_id, "cancelled")
-            logger.info(f"Task cancelled: {task_id}")
+            error = f"Cancelled: {reason}" if reason else None
+            await task_service.update_task_status(task_id, "cancelled", error=error)
+            logger.info(
+                f"Task cancelled: {task_id}" + (f" ({reason})" if reason else "")
+            )
             return True
         return False
 

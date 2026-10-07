@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from src.api.auth import verify_token
-from src.models.request import AgentExecuteRequest
+from src.models.request import AgentExecuteRequest, TaskCancelRequest
 from src.models.response import TaskResponse
 from src.services.agent_service import agent_service
 from src.utils.validators import validate_agent_type
@@ -98,7 +98,9 @@ async def get_task_result(
 @router.post("/cancel/{task_id}")
 async def cancel_task(
     task_id: str,
+    request: TaskCancelRequest | None = None,
     _=Depends(verify_token),
 ) -> dict:
-    cancelled = await agent_service.cancel(task_id)
+    reason = request.reason if request else ""
+    cancelled = await agent_service.cancel(task_id, reason=reason)
     return {"task_id": task_id, "status": "cancelled" if cancelled else "not_found"}

@@ -30,6 +30,12 @@ External API calls.
 - `call_rest_api(endpoint, params)` - REST API call
 - `call_graphql(query, variables)` - GraphQL query
 
+All three validate the target URL before making the request: only `http`/`https`
+schemes are allowed, and the resolved hostname is rejected if it is a private,
+loopback, link-local, multicast, or otherwise reserved address — this blocks
+SSRF attempts against internal services or cloud metadata endpoints (e.g.
+`169.254.169.254`).
+
 ### calculator_tool
 Math and calculations.
 - `execute(expression)` - Evaluate math expression

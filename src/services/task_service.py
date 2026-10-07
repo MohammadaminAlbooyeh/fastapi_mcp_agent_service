@@ -29,13 +29,16 @@ class TaskService:
         finally:
             db.close()
 
-    async def update_task_status(self, task_id: str, status: str) -> Optional[Task]:
+    async def update_task_status(
+        self, task_id: str, status: str, error: Optional[str] = None
+    ) -> Optional[Task]:
         db = SessionLocal()
         try:
             crud = CRUD(db)
-            record = crud.update_task(
-                task_id, {"status": status, "updated_at": datetime.now()}
-            )
+            updates: Dict[str, Any] = {"status": status, "updated_at": datetime.now()}
+            if error is not None:
+                updates["error"] = error
+            record = crud.update_task(task_id, updates)
             if not record:
                 return None
             return self._record_to_task(record)

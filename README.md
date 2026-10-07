@@ -17,6 +17,7 @@ This service provides a scalable, async-first platform for deploying multi-agent
 - **Job Queue** — Celery-based background task processing
 - **Streaming Responses** — Real-time agent output via Server-Sent Events
 - **Authentication** — JWT-based security with python-jose
+- **SSRF Protection** — `api_tool` blocks non-http(s) schemes and requests to private/loopback/link-local/cloud-metadata addresses
 - **Error Handling** — Comprehensive exception handling and graceful degradation
 - **Production Ready** — Structured logging, CORS middleware, health checks
 
@@ -181,12 +182,17 @@ Client Request (POST /api/v1/agent/execute)
     │       │       ├─ Processor Agent (file_tool, calculator_tool)
     │       │       └─ Research Agent (search_tool, api_tool)
     │       │
-    │       ├─→ Agent builds LangGraph workflow
+    │       ├─→ Agent builds its own LangGraph workflow (3 nodes):
     │       │       │
-    │       │       ├─→ LLM Node (Claude generates plan)
-    │       │       ├─→ Tool Execution Node (runs MCP tools)
-    │       │       ├─→ Result Processing Node (formats output)
-    │       │       └─→ LLM Summary Node (final response)
+    │       │       ├─→ analyze (Query Agent: LLM generates SQL;
+    │       │       │            Processor Agent: LLM classifies
+    │       │       │            calculation vs. file operation and
+    │       │       │            routes accordingly; Research Agent:
+    │       │       │            passes the query through as-is)
+    │       │       ├─→ execute_tools / execute_calculations /
+    │       │       │   execute_file_operation (runs the chosen MCP tool)
+    │       │       └─→ respond (LLM turns the tool result into the
+    │       │                    final answer)
     │       │
     │       ├─→ Check if approval required
     │       │       │
