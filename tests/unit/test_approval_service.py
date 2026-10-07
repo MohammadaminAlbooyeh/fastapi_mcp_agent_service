@@ -5,7 +5,11 @@ from typing import Dict
 
 import pytest
 
-from src.services.approval_service import ApprovalService, ApprovalStatus, ToolApprovalRequest
+from src.services.approval_service import (
+    ApprovalService,
+    ApprovalStatus,
+    ToolApprovalRequest,
+)
 
 
 class TestApprovalService:
@@ -71,7 +75,9 @@ class TestApprovalService:
 
     @pytest.mark.asyncio
     async def test_get_pending_after_approval(self) -> None:
-        req = await self.service.request_approval("tool1", {}, "agent1", "query1", "task-pa1")
+        req = await self.service.request_approval(
+            "tool1", {}, "agent1", "query1", "task-pa1"
+        )
         await self.service.approve_request(req.request_id)
 
         pending = await self.service.get_pending_requests()
@@ -119,7 +125,9 @@ class TestApprovalService:
         assert decision == ApprovalStatus.EXPIRED
 
     @pytest.mark.asyncio
-    async def test_cross_process_approval_detected_via_db_polling(self, monkeypatch) -> None:
+    async def test_cross_process_approval_detected_via_db_polling(
+        self, monkeypatch
+    ) -> None:
         """Simulates two worker processes: service_a holds the request's
         asyncio.Event (it received the original request), service_b receives
         the approve call (e.g. a different API worker). service_b can't see
@@ -129,7 +137,10 @@ class TestApprovalService:
         shared_db: Dict[str, ApprovalStatus] = {}
 
         async def fake_decide_in_db(self, request_id, status, approver="", reason=""):
-            if shared_db.get(request_id, ApprovalStatus.PENDING) != ApprovalStatus.PENDING:
+            if (
+                shared_db.get(request_id, ApprovalStatus.PENDING)
+                != ApprovalStatus.PENDING
+            ):
                 return False
             shared_db[request_id] = status
             return True
@@ -138,7 +149,9 @@ class TestApprovalService:
             return shared_db.get(self.request_id)
 
         monkeypatch.setattr(ApprovalService, "_decide_in_db", fake_decide_in_db)
-        monkeypatch.setattr(ToolApprovalRequest, "_fetch_db_status", fake_fetch_db_status)
+        monkeypatch.setattr(
+            ToolApprovalRequest, "_fetch_db_status", fake_fetch_db_status
+        )
 
         service_a = ApprovalService()
         service_b = ApprovalService()
@@ -165,11 +178,16 @@ class TestApprovalService:
         assert decision == ApprovalStatus.APPROVED
 
     @pytest.mark.asyncio
-    async def test_cross_process_rejection_detected_via_db_polling(self, monkeypatch) -> None:
+    async def test_cross_process_rejection_detected_via_db_polling(
+        self, monkeypatch
+    ) -> None:
         shared_db: Dict[str, ApprovalStatus] = {}
 
         async def fake_decide_in_db(self, request_id, status, approver="", reason=""):
-            if shared_db.get(request_id, ApprovalStatus.PENDING) != ApprovalStatus.PENDING:
+            if (
+                shared_db.get(request_id, ApprovalStatus.PENDING)
+                != ApprovalStatus.PENDING
+            ):
                 return False
             shared_db[request_id] = status
             return True
@@ -178,7 +196,9 @@ class TestApprovalService:
             return shared_db.get(self.request_id)
 
         monkeypatch.setattr(ApprovalService, "_decide_in_db", fake_decide_in_db)
-        monkeypatch.setattr(ToolApprovalRequest, "_fetch_db_status", fake_fetch_db_status)
+        monkeypatch.setattr(
+            ToolApprovalRequest, "_fetch_db_status", fake_fetch_db_status
+        )
 
         service_a = ApprovalService()
         service_b = ApprovalService()
@@ -205,14 +225,19 @@ class TestApprovalService:
         assert decision == ApprovalStatus.REJECTED
 
     @pytest.mark.asyncio
-    async def test_decide_in_db_returns_false_when_already_decided(self, monkeypatch) -> None:
+    async def test_decide_in_db_returns_false_when_already_decided(
+        self, monkeypatch
+    ) -> None:
         """A second, concurrent approve/reject call for the same request_id
         (e.g. two admins clicking at once, or a retried request) must not
         double-apply the decision."""
         shared_db: Dict[str, ApprovalStatus] = {}
 
         async def fake_decide_in_db(self, request_id, status, approver="", reason=""):
-            if shared_db.get(request_id, ApprovalStatus.PENDING) != ApprovalStatus.PENDING:
+            if (
+                shared_db.get(request_id, ApprovalStatus.PENDING)
+                != ApprovalStatus.PENDING
+            ):
                 return False
             shared_db[request_id] = status
             return True

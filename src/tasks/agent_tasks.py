@@ -33,7 +33,9 @@ def execute_agent_task(
     _run_async(task_service.update_task_status(task_id, "running"))
 
     try:
-        result = _run_async(orchestrator.execute(query=query, agent_type=agent_type, tools=tools))
+        result = _run_async(
+            orchestrator.execute(query=query, agent_type=agent_type, tools=tools)
+        )
         elapsed = time.time() - start
         _run_async(task_service.save_result(task_id, result, elapsed))
         logger.info(f"Celery task completed: {task_id} in {elapsed:.2f}s")

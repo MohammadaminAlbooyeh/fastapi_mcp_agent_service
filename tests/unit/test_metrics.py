@@ -14,8 +14,12 @@ class TestMetricsCardinality:
         every distinct id ever requested."""
         client = TestClient(app)
 
-        client.get("/api/v1/agent/status/task-id-one", headers={"Authorization": "Bearer x"})
-        client.get("/api/v1/agent/status/task-id-two", headers={"Authorization": "Bearer x"})
+        client.get(
+            "/api/v1/agent/status/task-id-one", headers={"Authorization": "Bearer x"}
+        )
+        client.get(
+            "/api/v1/agent/status/task-id-two", headers={"Authorization": "Bearer x"}
+        )
 
         samples = [
             sample
@@ -32,4 +36,6 @@ class TestMetricsCardinality:
             if "task-id-one" in sample.labels.get("endpoint", "")
             or "task-id-two" in sample.labels.get("endpoint", "")
         ]
-        assert raw_path_samples == [], "task_id values must never leak into metric labels"
+        assert (
+            raw_path_samples == []
+        ), "task_id values must never leak into metric labels"

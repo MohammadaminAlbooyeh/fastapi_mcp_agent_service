@@ -42,6 +42,7 @@ async def stream_agent(
             query=request.query,
             agent_type=request.agent_type,
             tools=request.tools,
+            timeout=request.timeout,
         ),
         media_type="text/event-stream",
     )
@@ -53,6 +54,7 @@ async def get_task_status(
     _=Depends(verify_token),
 ) -> TaskResponse:
     from src.services.task_service import task_service
+
     task = await task_service.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
@@ -71,6 +73,7 @@ async def get_task_result(
     _=Depends(verify_token),
 ) -> TaskResponse:
     from src.services.task_service import task_service
+
     task = await task_service.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")

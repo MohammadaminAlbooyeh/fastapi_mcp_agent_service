@@ -9,8 +9,7 @@ class BaseTool(ABC):
     description: str = ""
 
     @abstractmethod
-    async def execute(self, **kwargs: Any) -> Dict[str, Any]:
-        ...
+    async def execute(self, **kwargs: Any) -> Dict[str, Any]: ...  # noqa: E704
 
     def get_schema(self) -> Dict[str, Any]:
         """Returns the JSON schema for this tool."""

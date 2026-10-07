@@ -12,14 +12,20 @@ from src.config.settings import settings
 security = HTTPBearer(auto_error=False)
 
 
-def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    data: Dict[str, Any], expires_delta: Optional[timedelta] = None
+) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(seconds=settings.access_token_expiry))
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(seconds=settings.access_token_expiry)
+    )
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
-def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict[str, Any]:
+def verify_token(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> Dict[str, Any]:
     if (
         settings.environment == "development"
         and settings.debug

@@ -22,12 +22,14 @@ class LLMService:
     async def _get_anthropic(self) -> Any:
         if self._anthropic_client is None:
             from anthropic import AsyncAnthropic
+
             self._anthropic_client = AsyncAnthropic(api_key=settings.anthropic_api_key)
         return self._anthropic_client
 
     async def _get_openai(self) -> Any:
         if self._openai_client is None:
             from openai import AsyncOpenAI
+
             self._openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
         return self._openai_client
 
@@ -39,7 +41,9 @@ class LLMService:
             return await self._openai_generate(prompt, system_prompt)
         return f"[LLM not configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY]\n\nPrompt: {prompt}"
 
-    async def stream_generate(self, prompt: str, system_prompt: Optional[str] = None) -> AsyncGenerator[str, None]:
+    async def stream_generate(
+        self, prompt: str, system_prompt: Optional[str] = None
+    ) -> AsyncGenerator[str, None]:
         provider = self._provider
         if provider == "anthropic":
             async for chunk in self._anthropic_stream(prompt, system_prompt):
@@ -50,7 +54,9 @@ class LLMService:
         else:
             yield f"[LLM not configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY]\n\nPrompt: {prompt}"
 
-    async def _anthropic_generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+    async def _anthropic_generate(
+        self, prompt: str, system_prompt: Optional[str] = None
+    ) -> str:
         client = await self._get_anthropic()
         kwargs: Dict[str, Any] = {
             "model": self.model,
@@ -62,7 +68,9 @@ class LLMService:
         response = await client.messages.create(**kwargs)
         return response.content[0].text
 
-    async def _openai_generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+    async def _openai_generate(
+        self, prompt: str, system_prompt: Optional[str] = None
+    ) -> str:
         client = await self._get_openai()
         messages: list[Dict[str, str]] = []
         if system_prompt:
@@ -75,7 +83,9 @@ class LLMService:
         )
         return response.choices[0].message.content or ""
 
-    async def _anthropic_stream(self, prompt: str, system_prompt: Optional[str] = None) -> AsyncGenerator[str, None]:
+    async def _anthropic_stream(
+        self, prompt: str, system_prompt: Optional[str] = None
+    ) -> AsyncGenerator[str, None]:
         client = await self._get_anthropic()
         kwargs: Dict[str, Any] = {
             "model": self.model,
@@ -88,7 +98,9 @@ class LLMService:
             async for text in stream.text_stream:
                 yield text
 
-    async def _openai_stream(self, prompt: str, system_prompt: Optional[str] = None) -> AsyncGenerator[str, None]:
+    async def _openai_stream(
+        self, prompt: str, system_prompt: Optional[str] = None
+    ) -> AsyncGenerator[str, None]:
         client = await self._get_openai()
         messages: list[Dict[str, str]] = []
         if system_prompt:

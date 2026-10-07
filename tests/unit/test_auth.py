@@ -17,6 +17,7 @@ class TestAuth:
 
     def test_create_access_token_with_expiry(self) -> None:
         from datetime import timedelta
+
         token = create_access_token({"sub": "test"}, expires_delta=timedelta(hours=1))
         assert isinstance(token, str)
 
@@ -37,7 +38,9 @@ class TestAuth:
         mock_credentials = MagicMock()
         mock_credentials.credentials = "valid-token"
 
-        with patch("src.api.auth.jwt.decode", return_value={"sub": "user", "role": "user"}):
+        with patch(
+            "src.api.auth.jwt.decode", return_value={"sub": "user", "role": "user"}
+        ):
             result = verify_token(mock_credentials)
             assert result["sub"] == "user"
 

@@ -28,7 +28,10 @@ class FileTool(BaseTool):
         if not full_path.is_dir():
             return []
         entries: List[str] = await asyncio.to_thread(
-            lambda: [str(p.relative_to(self.ALLOWED_BASE)) for p in sorted(full_path.iterdir())]
+            lambda: [
+                str(p.relative_to(self.ALLOWED_BASE))
+                for p in sorted(full_path.iterdir())
+            ]
         )
         return entries
 
@@ -57,7 +60,9 @@ class FileTool(BaseTool):
             if action == "read":
                 result = await self.read_file(kwargs.get("path", ""))
             elif action == "write":
-                result = await self.write_file(kwargs.get("path", ""), kwargs.get("content", ""))
+                result = await self.write_file(
+                    kwargs.get("path", ""), kwargs.get("content", "")
+                )
             elif action == "list":
                 result = await self.list_files(kwargs.get("directory", ""))
             elif action == "delete":

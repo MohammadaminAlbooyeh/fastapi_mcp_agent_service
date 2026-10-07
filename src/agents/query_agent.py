@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from langgraph.graph import END, START, StateGraph
 
@@ -16,7 +16,9 @@ class QueryAgent(BaseAgent):
     name: str = "query"
     description: str = "Specialized for executing database queries"
     tools: list[str] = ["database_tool"]
-    SYSTEM_PROMPT: str = "You are a database query assistant. Interpret the user's request and explain the query results."
+    SYSTEM_PROMPT: str = (
+        "You are a database query assistant. Interpret the user's request and explain the query results."
+    )
 
     SQL_GENERATION_PROMPT: str = (
         "Convert the following request into a single, read-only SQL SELECT statement. "
@@ -27,7 +29,9 @@ class QueryAgent(BaseAgent):
     def build_graph(self) -> StateGraph:
         async def analyze(state: Dict[str, Any]) -> Dict[str, Any]:
             query = state.get("query", "")
-            raw_sql = await llm_service.generate(self.SQL_GENERATION_PROMPT.format(query=query))
+            raw_sql = await llm_service.generate(
+                self.SQL_GENERATION_PROMPT.format(query=query)
+            )
             sql = _SQL_FENCE_RE.sub("", raw_sql).strip()
             return {"sql_query": sql}
 

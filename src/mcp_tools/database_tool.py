@@ -16,7 +16,9 @@ _MULTI_STATEMENT_RE = re.compile(r";\s*\S")
 
 
 def _allowed_tables() -> Dict[str, set]:
-    return {name: set(table.columns.keys()) for name, table in Base.metadata.tables.items()}
+    return {
+        name: set(table.columns.keys()) for name, table in Base.metadata.tables.items()
+    }
 
 
 def _validate_table(table: str) -> set:
@@ -29,16 +31,22 @@ def _validate_table(table: str) -> set:
 def _validate_columns(table: str, columns: Any, allowed_columns: set) -> None:
     for column in columns:
         if column not in allowed_columns:
-            raise ValueError(f"Unknown or disallowed column {column!r} for table {table!r}")
+            raise ValueError(
+                f"Unknown or disallowed column {column!r} for table {table!r}"
+            )
 
 
 class DatabaseTool(BaseTool):
     name: str = "database_tool"
     description: str = "Execute database queries and CRUD operations"
 
-    async def execute_query(self, sql: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    async def execute_query(
+        self, sql: str, params: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
         if not _SELECT_ONLY_RE.match(sql) or _MULTI_STATEMENT_RE.search(sql):
-            raise ValueError("Only single SELECT statements are allowed for the 'query' action")
+            raise ValueError(
+                "Only single SELECT statements are allowed for the 'query' action"
+            )
 
         def _run() -> list[dict[str, Any]]:
             db = SessionLocal()
@@ -49,6 +57,7 @@ class DatabaseTool(BaseTool):
                 return []
             finally:
                 db.close()
+
         return await asyncio.to_thread(_run)
 
     async def insert_record(self, table: str, data: Dict[str, Any]) -> Optional[int]:
@@ -67,9 +76,12 @@ class DatabaseTool(BaseTool):
                 return row[0] if row else None
             finally:
                 db.close()
+
         return await asyncio.to_thread(_run)
 
-    async def update_record(self, table: str, record_id: int, data: Dict[str, Any]) -> bool:
+    async def update_record(
+        self, table: str, record_id: int, data: Dict[str, Any]
+    ) -> bool:
         allowed_columns = _validate_table(table)
         _validate_columns(table, data.keys(), allowed_columns)
 
@@ -84,6 +96,7 @@ class DatabaseTool(BaseTool):
                 return result.rowcount > 0
             finally:
                 db.close()
+
         return await asyncio.to_thread(_run)
 
     async def delete_record(self, table: str, record_id: int) -> bool:
@@ -98,9 +111,12 @@ class DatabaseTool(BaseTool):
                 return result.rowcount > 0
             finally:
                 db.close()
+
         return await asyncio.to_thread(_run)
 
-    async def list_records(self, table: str, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    async def list_records(
+        self, table: str, filters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
         allowed_columns = _validate_table(table)
         if filters:
             _validate_columns(table, filters.keys(), allowed_columns)
@@ -120,21 +136,32 @@ class DatabaseTool(BaseTool):
                 return []
             finally:
                 db.close()
+
         return await asyncio.to_thread(_run)
 
     async def execute(self, **kwargs: Any) -> Dict[str, Any]:
         action = kwargs.get("action")
         try:
             if action == "query":
-                result = await self.execute_query(kwargs.get("sql", ""), kwargs.get("params"))
+                result = await self.execute_query(
+                    kwargs.get("sql", ""), kwargs.get("params")
+                )
             elif action == "insert":
-                result = await self.insert_record(kwargs.get("table", ""), kwargs.get("data", {}))
+                result = await self.insert_record(
+                    kwargs.get("table", ""), kwargs.get("data", {})
+                )
             elif action == "update":
-                result = await self.update_record(kwargs.get("table", ""), kwargs.get("id", 0), kwargs.get("data", {}))
+                result = await self.update_record(
+                    kwargs.get("table", ""), kwargs.get("id", 0), kwargs.get("data", {})
+                )
             elif action == "delete":
-                result = await self.delete_record(kwargs.get("table", ""), kwargs.get("id", 0))
+                result = await self.delete_record(
+                    kwargs.get("table", ""), kwargs.get("id", 0)
+                )
             elif action == "list":
-                result = await self.list_records(kwargs.get("table", ""), kwargs.get("filters"))
+                result = await self.list_records(
+                    kwargs.get("table", ""), kwargs.get("filters")
+                )
             else:
                 return {"tool": self.name, "error": f"Unknown action: {action}"}
             return {"tool": self.name, "action": action, "result": result}
@@ -151,29 +178,29 @@ class DatabaseTool(BaseTool):
                     "action": {
                         "type": "string",
                         "enum": ["query", "insert", "update", "delete", "list"],
-                        "description": "The database operation to perform."
+                        "description": "The database operation to perform.",
                     },
                     "sql": {
                         "type": "string",
-                        "description": "SQL query to execute (used only with 'query' action)."
+                        "description": "SQL query to execute (used only with 'query' action).",
                     },
                     "table": {
                         "type": "string",
-                        "description": "Table name (used with list, insert, update, delete)."
+                        "description": "Table name (used with list, insert, update, delete).",
                     },
                     "data": {
                         "type": "object",
-                        "description": "Record data for insert/update."
+                        "description": "Record data for insert/update.",
                     },
                     "id": {
                         "type": "integer",
-                        "description": "Record ID for update/delete."
+                        "description": "Record ID for update/delete.",
                     },
                     "filters": {
                         "type": "object",
-                        "description": "Key-value filters for list action."
-                    }
+                        "description": "Key-value filters for list action.",
+                    },
                 },
-                "required": ["action"]
-            }
+                "required": ["action"],
+            },
         }

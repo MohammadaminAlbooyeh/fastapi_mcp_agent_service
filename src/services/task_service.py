@@ -33,7 +33,9 @@ class TaskService:
         db = SessionLocal()
         try:
             crud = CRUD(db)
-            record = crud.update_task(task_id, {"status": status, "updated_at": datetime.now()})
+            record = crud.update_task(
+                task_id, {"status": status, "updated_at": datetime.now()}
+            )
             if not record:
                 return None
             return self._record_to_task(record)
@@ -46,12 +48,15 @@ class TaskService:
         db = SessionLocal()
         try:
             crud = CRUD(db)
-            record = crud.update_task(task_id, {
-                "result": result,
-                "status": "completed",
-                "execution_time": execution_time,
-                "updated_at": datetime.now(),
-            })
+            record = crud.update_task(
+                task_id,
+                {
+                    "result": result,
+                    "status": "completed",
+                    "execution_time": execution_time,
+                    "updated_at": datetime.now(),
+                },
+            )
             if not record:
                 return None
             return self._record_to_task(record)
@@ -62,11 +67,14 @@ class TaskService:
         db = SessionLocal()
         try:
             crud = CRUD(db)
-            record = crud.update_task(task_id, {
-                "error": error,
-                "status": "failed",
-                "updated_at": datetime.now(),
-            })
+            record = crud.update_task(
+                task_id,
+                {
+                    "error": error,
+                    "status": "failed",
+                    "updated_at": datetime.now(),
+                },
+            )
             if not record:
                 return None
             return self._record_to_task(record)

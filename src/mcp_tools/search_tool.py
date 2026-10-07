@@ -27,27 +27,33 @@ class SearchTool(BaseTool):
             data = response.json()
 
             if data.get("AbstractText"):
-                results.append({
-                    "title": data.get("Heading", ""),
-                    "snippet": data.get("AbstractText", ""),
-                    "source": data.get("AbstractSource", ""),
-                    "url": data.get("AbstractURL", ""),
-                })
+                results.append(
+                    {
+                        "title": data.get("Heading", ""),
+                        "snippet": data.get("AbstractText", ""),
+                        "source": data.get("AbstractSource", ""),
+                        "url": data.get("AbstractURL", ""),
+                    }
+                )
 
             for topic in data.get("RelatedTopics", []):
                 if "Topics" in topic:
                     for sub in topic["Topics"]:
-                        results.append({
-                            "title": sub.get("Text", "").split(" - ")[0],
-                            "snippet": sub.get("Text", ""),
-                            "url": sub.get("FirstURL", ""),
-                        })
+                        results.append(
+                            {
+                                "title": sub.get("Text", "").split(" - ")[0],
+                                "snippet": sub.get("Text", ""),
+                                "url": sub.get("FirstURL", ""),
+                            }
+                        )
                 else:
-                    results.append({
-                        "title": topic.get("Text", "").split(" - ")[0],
-                        "snippet": topic.get("Text", ""),
-                        "url": topic.get("FirstURL", ""),
-                    })
+                    results.append(
+                        {
+                            "title": topic.get("Text", "").split(" - ")[0],
+                            "snippet": topic.get("Text", ""),
+                            "url": topic.get("FirstURL", ""),
+                        }
+                    )
 
         if not results:
             async with httpx.AsyncClient(timeout=15.0) as client:
@@ -67,32 +73,60 @@ class SearchTool(BaseTool):
 
     async def semantic_search(self, query: str, index: str) -> List[Dict[str, Any]]:
         if not settings.openai_api_key:
-            return [{"query": query, "index": index, "note": "Set OPENAI_API_KEY for embeddings"}]
+            return [
+                {
+                    "query": query,
+                    "index": index,
+                    "note": "Set OPENAI_API_KEY for embeddings",
+                }
+            ]
 
         from openai import AsyncOpenAI
+
         client = AsyncOpenAI(api_key=settings.openai_api_key)
-        response = await client.embeddings.create(input=query, model="text-embedding-3-small")
+        response = await client.embeddings.create(
+            input=query, model="text-embedding-3-small"
+        )
         embedding = response.data[0].embedding
 
         self._vector_index[f"{index}:{query}"] = embedding
-        return [{
-            "query": query,
-            "index": index,
-            "embedding_dim": len(embedding),
-            "index_size": len(self._vector_index),
-            "note": "Stored in in-memory vector index. Use similarity_search to query.",
-        }]
+        return [
+            {
+                "query": query,
+                "index": index,
+                "embedding_dim": len(embedding),
+                "index_size": len(self._vector_index),
+                "note": "Stored in in-memory vector index. Use similarity_search to query.",
+            }
+        ]
 
-    async def similarity_search(self, text: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    async def similarity_search(
+        self, text: str, top_k: int = 5
+    ) -> List[Dict[str, Any]]:
         if not settings.openai_api_key:
-            return [{"text": text, "top_k": top_k, "note": "Set OPENAI_API_KEY for embeddings"}]
+            return [
+                {
+                    "text": text,
+                    "top_k": top_k,
+                    "note": "Set OPENAI_API_KEY for embeddings",
+                }
+            ]
 
         if not self._vector_index:
-            return [{"text": text, "top_k": top_k, "note": "No vectors in index. Add documents via semantic_search first."}]
+            return [
+                {
+                    "text": text,
+                    "top_k": top_k,
+                    "note": "No vectors in index. Add documents via semantic_search first.",
+                }
+            ]
 
         from openai import AsyncOpenAI
+
         client = AsyncOpenAI(api_key=settings.openai_api_key)
-        response = await client.embeddings.create(input=text, model="text-embedding-3-small")
+        response = await client.embeddings.create(
+            input=text, model="text-embedding-3-small"
+        )
         query_embedding = response.data[0].embedding
 
         def cosine_similarity(a: List[float], b: List[float]) -> float:
@@ -116,9 +150,13 @@ class SearchTool(BaseTool):
             if action == "web_search":
                 result = await self.web_search(kwargs.get("query", ""))
             elif action == "semantic_search":
-                result = await self.semantic_search(kwargs.get("query", ""), kwargs.get("index", ""))
+                result = await self.semantic_search(
+                    kwargs.get("query", ""), kwargs.get("index", "")
+                )
             elif action == "similarity_search":
-                result = await self.similarity_search(kwargs.get("text", ""), kwargs.get("top_k", 5))
+                result = await self.similarity_search(
+                    kwargs.get("text", ""), kwargs.get("top_k", 5)
+                )
             else:
                 return {"tool": self.name, "error": f"Unknown action: {action}"}
             return {"tool": self.name, "action": action, "result": result}

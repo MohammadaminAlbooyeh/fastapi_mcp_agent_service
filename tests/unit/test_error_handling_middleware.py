@@ -14,13 +14,17 @@ def _build_app() -> FastAPI:
 
     @app.get("/boom")
     async def boom():
-        raise RuntimeError("connection to postgresql://admin:s3cr3t@10.0.0.5/prod failed")
+        raise RuntimeError(
+            "connection to postgresql://admin:s3cr3t@10.0.0.5/prod failed"
+        )
 
     return app
 
 
 class TestErrorHandlingMiddleware:
-    def test_hides_raw_exception_message_outside_debug(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_hides_raw_exception_message_outside_debug(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(settings, "debug", False)
         client = TestClient(_build_app(), raise_server_exceptions=False)
 
@@ -29,7 +33,9 @@ class TestErrorHandlingMiddleware:
         assert response.status_code == 500
         assert response.json() == {"detail": "Internal server error"}
 
-    def test_shows_exception_message_in_debug(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_shows_exception_message_in_debug(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(settings, "debug", True)
         client = TestClient(_build_app(), raise_server_exceptions=False)
 

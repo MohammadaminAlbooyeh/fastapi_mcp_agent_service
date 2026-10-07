@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List
-from unittest.mock import MagicMock, PropertyMock, patch
+from typing import Any, Dict
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -48,7 +48,9 @@ class TestCRUD:
             db_session.add.assert_called_once()
             db_session.commit.assert_called_once()
 
-    def test_get_task_exists(self, crud: CRUD, db_session: MagicMock, sample_task_record: TaskRecord) -> None:
+    def test_get_task_exists(
+        self, crud: CRUD, db_session: MagicMock, sample_task_record: TaskRecord
+    ) -> None:
         query_mock = MagicMock()
         query_mock.filter.return_value.first.return_value = sample_task_record
         db_session.query.return_value = query_mock
@@ -66,7 +68,9 @@ class TestCRUD:
         task = crud.get_task("nonexistent")
         assert task is None
 
-    def test_update_task(self, crud: CRUD, db_session: MagicMock, sample_task_record: TaskRecord) -> None:
+    def test_update_task(
+        self, crud: CRUD, db_session: MagicMock, sample_task_record: TaskRecord
+    ) -> None:
         query_mock = MagicMock()
         query_mock.filter.return_value.first.return_value = sample_task_record
         db_session.query.return_value = query_mock
@@ -85,7 +89,9 @@ class TestCRUD:
         updated = crud.update_task("nonexistent", {"status": "completed"})
         assert updated is None
 
-    def test_list_tasks_no_filters(self, crud: CRUD, db_session: MagicMock, sample_task_record: TaskRecord) -> None:
+    def test_list_tasks_no_filters(
+        self, crud: CRUD, db_session: MagicMock, sample_task_record: TaskRecord
+    ) -> None:
         query_mock = MagicMock()
         query_mock.filter.return_value = query_mock
         query_mock.order_by.return_value.all.return_value = [sample_task_record]
@@ -95,7 +101,9 @@ class TestCRUD:
         assert len(tasks) == 1
         assert tasks[0].task_id == "test-task-001"
 
-    def test_list_tasks_with_filters(self, crud: CRUD, db_session: MagicMock, sample_task_record: TaskRecord) -> None:
+    def test_list_tasks_with_filters(
+        self, crud: CRUD, db_session: MagicMock, sample_task_record: TaskRecord
+    ) -> None:
         query_mock = MagicMock()
         query_mock.filter.return_value = query_mock
         query_mock.filter.return_value = query_mock
@@ -148,7 +156,9 @@ class TestQueries:
         assert results[0]["count"] == 5
 
     def test_get_recent_tasks(self, db_session: MagicMock) -> None:
-        rows = [_MockRow(task_id="t1", query="q1", agent_type="query", status="completed")]
+        rows = [
+            _MockRow(task_id="t1", query="q1", agent_type="query", status="completed")
+        ]
         result_mock = MagicMock()
         result_mock.returns_rows = True
         result_mock.__iter__.return_value = iter(rows)

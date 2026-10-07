@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.logger import logger
 from src.database.connection import AsyncSessionLocal
@@ -69,7 +68,9 @@ class ToolApprovalRequest:
                 self.status = ApprovalStatus.EXPIRED
                 return self.status
             try:
-                await asyncio.wait_for(self._event.wait(), timeout=min(current_interval, remaining))
+                await asyncio.wait_for(
+                    self._event.wait(), timeout=min(current_interval, remaining)
+                )
                 return self.status
             except asyncio.TimeoutError:
                 # The decision may have been made by a different worker process
@@ -80,7 +81,9 @@ class ToolApprovalRequest:
                     self.status = db_status
                     self._event.set()
                     return self.status
-                current_interval = min(current_interval * poll_backoff, max_poll_interval)
+                current_interval = min(
+                    current_interval * poll_backoff, max_poll_interval
+                )
 
     async def _fetch_db_status(self) -> Optional["ApprovalStatus"]:
         try:
@@ -95,7 +98,9 @@ class ToolApprovalRequest:
                     return None
                 return ApprovalStatus(db_request.status)
         except Exception as e:
-            logger.error(f"Failed to poll approval request {self.request_id} from database: {e}")
+            logger.error(
+                f"Failed to poll approval request {self.request_id} from database: {e}"
+            )
             return None
 
 
@@ -136,7 +141,9 @@ class ApprovalService:
                 )
                 session.add(db_request)
                 await session.commit()
-                logger.info(f"Approval request {request.request_id} created for task {task_id}")
+                logger.info(
+                    f"Approval request {request.request_id} created for task {task_id}"
+                )
         except Exception as e:
             logger.error(f"Failed to save approval request to database: {e}")
 
@@ -160,12 +167,16 @@ class ApprovalService:
                         db_request.approver = approver
                         db_request.updated_at = datetime.now()
                         await session.commit()
-                        logger.info(f"Approval request {request_id} approved by {approver}")
+                        logger.info(
+                            f"Approval request {request_id} approved by {approver}"
+                        )
             except Exception as e:
                 logger.error(f"Failed to update approval request in database: {e}")
 
             return True
-        return await self._decide_in_db(request_id, ApprovalStatus.APPROVED, approver=approver)
+        return await self._decide_in_db(
+            request_id, ApprovalStatus.APPROVED, approver=approver
+        )
 
     async def reject_request(
         self, request_id: str, approver: str = "", reason: str = ""
@@ -188,7 +199,9 @@ class ApprovalService:
                         db_request.rejection_reason = reason
                         db_request.updated_at = datetime.now()
                         await session.commit()
-                        logger.info(f"Approval request {request_id} rejected by {approver}")
+                        logger.info(
+                            f"Approval request {request_id} rejected by {approver}"
+                        )
             except Exception as e:
                 logger.error(f"Failed to update approval request in database: {e}")
 
@@ -215,7 +228,10 @@ class ApprovalService:
                     )
                 )
                 db_request = result.scalar_one_or_none()
-                if db_request is None or db_request.status != ApprovalStatus.PENDING.value:
+                if (
+                    db_request is None
+                    or db_request.status != ApprovalStatus.PENDING.value
+                ):
                     return False
                 db_request.status = status.value
                 db_request.approver = approver
@@ -223,7 +239,9 @@ class ApprovalService:
                     db_request.rejection_reason = reason
                 db_request.updated_at = datetime.now()
                 await session.commit()
-                logger.info(f"Approval request {request_id} {status.value} by {approver} (cross-process)")
+                logger.info(
+                    f"Approval request {request_id} {status.value} by {approver} (cross-process)"
+                )
                 return True
         except Exception as e:
             logger.error(f"Failed to update approval request in database: {e}")

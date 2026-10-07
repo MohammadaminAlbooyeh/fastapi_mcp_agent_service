@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -10,6 +10,9 @@ from starlette.responses import JSONResponse
 
 from src.config.logger import logger
 from src.config.settings import settings
+
+if TYPE_CHECKING:
+    from redis.asyncio import Redis
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -26,7 +29,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return self._redis_available
         try:
             import redis.asyncio as aioredis
-            client = aioredis.from_url(settings.redis_url, decode_responses=True, socket_connect_timeout=1)
+
+            client = aioredis.from_url(
+                settings.redis_url, decode_responses=True, socket_connect_timeout=1
+            )
             await client.ping()
             self._redis = client
             self._redis_available = True
@@ -55,7 +61,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 if count is not None and count >= self.max_requests:
                     return JSONResponse(
                         status_code=429,
-                        content={"detail": "Too many requests", "retry_after": self.window_seconds},
+                        content={
+                            "detail": "Too many requests",
+                            "retry_after": self.window_seconds,
+                        },
                     )
                 await self._redis.zadd(key, {str(now): now})
                 await self._redis.expire(key, self.window_seconds * 2)
@@ -75,7 +84,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if len(self._local[client_ip]) >= self.max_requests:
             return JSONResponse(
                 status_code=429,
-                content={"detail": "Too many requests", "retry_after": self.window_seconds},
+                content={
+                    "detail": "Too many requests",
+                    "retry_after": self.window_seconds,
+                },
             )
         self._local[client_ip].append(now)
         return await call_next(request)

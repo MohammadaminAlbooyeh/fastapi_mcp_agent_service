@@ -32,9 +32,7 @@ def timed(func: F) -> F:
     return sync_wrapper  # type: ignore
 
 
-def retry(
-    max_retries: int = 3, delay: float = 1.0
-) -> Callable[[F], F]:
+def retry(max_retries: int = 3, delay: float = 1.0) -> Callable[[F], F]:
     def decorator(func: F) -> F:
         @functools.wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -44,9 +42,7 @@ def retry(
                 except Exception as e:
                     if attempt == max_retries - 1:
                         raise
-                    logger.warning(
-                        f"Attempt {attempt + 1} failed: {e}. Retrying..."
-                    )
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying...")
                     await asyncio.sleep(delay)
             return None
 
@@ -58,9 +54,7 @@ def retry(
                 except Exception as e:
                     if attempt == max_retries - 1:
                         raise
-                    logger.warning(
-                        f"Attempt {attempt + 1} failed: {e}. Retrying..."
-                    )
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying...")
                     time.sleep(delay)
             return None
 

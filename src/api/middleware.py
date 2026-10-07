@@ -14,7 +14,9 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             return response
         except Exception as e:
-            logger.exception(f"Unhandled exception while processing {request.method} {request.url.path}: {e}")
+            logger.exception(
+                f"Unhandled exception while processing {request.method} {request.url.path}: {e}"
+            )
             # Exception messages can carry internal details (DB connection
             # strings, file paths, stack traces) — only ever return the raw
             # message in debug mode; production clients get a generic message.

@@ -6,7 +6,6 @@ from typing import Any, Dict
 
 from src.mcp_tools.base import BaseTool
 
-
 _ALLOWED_OPERATORS = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
@@ -44,11 +43,15 @@ class CalculatorTool(BaseTool):
         if isinstance(node, ast.UnaryOp):
             op = _ALLOWED_OPERATORS.get(type(node.op))
             if op is None:
-                raise ValueError(f"Unsupported unary operator: {type(node.op).__name__}")
+                raise ValueError(
+                    f"Unsupported unary operator: {type(node.op).__name__}"
+                )
             return op(self._eval_node(node.operand))
         if isinstance(node, ast.BinOp):
             op = _ALLOWED_OPERATORS.get(type(node.op))
             if op is None:
-                raise ValueError(f"Unsupported binary operator: {type(node.op).__name__}")
+                raise ValueError(
+                    f"Unsupported binary operator: {type(node.op).__name__}"
+                )
             return op(self._eval_node(node.left), self._eval_node(node.right))
         raise ValueError(f"Unsupported expression: {type(node).__name__}")

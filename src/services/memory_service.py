@@ -14,16 +14,20 @@ class ConversationMemory:
     def _memory_key(self) -> str:
         return f"memory:{self.session_id}"
 
-    async def add_message(self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    async def add_message(
+        self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
         messages = await self.get_history()
-        messages.append({
-            "role": role,
-            "content": content,
-            "timestamp": datetime.now().isoformat(),
-            "metadata": metadata or {},
-        })
+        messages.append(
+            {
+                "role": role,
+                "content": content,
+                "timestamp": datetime.now().isoformat(),
+                "metadata": metadata or {},
+            }
+        )
         if len(messages) > self.max_history:
-            messages = messages[-self.max_history:]
+            messages = messages[-self.max_history :]
         await cache_service.cache_result(self._memory_key(), messages, ttl=86400)
 
     async def get_history(self) -> List[Dict[str, Any]]:
@@ -63,7 +67,10 @@ class AgentMemoryManager:
         await memory.add_message(
             role="assistant",
             content=str(result.get("result", result.get("llm_response", ""))),
-            metadata={"agent_type": agent_type, "status": result.get("status", "completed")},
+            metadata={
+                "agent_type": agent_type,
+                "status": result.get("status", "completed"),
+            },
         )
 
 

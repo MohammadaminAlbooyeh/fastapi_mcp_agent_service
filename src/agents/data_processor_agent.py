@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from langgraph.graph import END, START, StateGraph
 
@@ -18,7 +18,9 @@ class DataProcessorAgent(BaseAgent):
     name: str = "processor"
     description: str = "For data transformation and analysis"
     tools: list[str] = ["file_tool", "calculator_tool"]
-    SYSTEM_PROMPT: str = "You are a data processing assistant. Explain calculations and file operations clearly."
+    SYSTEM_PROMPT: str = (
+        "You are a data processing assistant. Explain calculations and file operations clearly."
+    )
 
     ROUTING_PROMPT: str = (
         "Classify the following request as either a math calculation or a file "
@@ -74,7 +76,11 @@ class DataProcessorAgent(BaseAgent):
             return {"result": response}
 
         def route(state: Dict[str, Any]) -> str:
-            return "execute_file_operation" if state.get("intent") == "file_operation" else "execute_calculations"
+            return (
+                "execute_file_operation"
+                if state.get("intent") == "file_operation"
+                else "execute_calculations"
+            )
 
         graph = StateGraph(Dict[str, Any])
         graph.add_node("analyze", analyze)
@@ -85,7 +91,10 @@ class DataProcessorAgent(BaseAgent):
         graph.add_conditional_edges(
             "analyze",
             route,
-            {"execute_calculations": "execute_calculations", "execute_file_operation": "execute_file_operation"},
+            {
+                "execute_calculations": "execute_calculations",
+                "execute_file_operation": "execute_file_operation",
+            },
         )
         graph.add_edge("execute_calculations", "respond")
         graph.add_edge("execute_file_operation", "respond")

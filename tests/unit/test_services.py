@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pytest import MonkeyPatch
 
 from src.database.models import TaskRecord
-from src.models.schemas import Task
 from src.services.cache_service import CacheService
 from src.services.notification_service import NotificationService
 from src.services.task_service import TaskService
@@ -175,7 +173,9 @@ class TestCacheService:
         mock_redis = AsyncMock()
         mock_redis.setex.return_value = True
         mock_redis.get.return_value = '{"answer": 42}'
-        monkeypatch.setattr(self.service, "_get_client", AsyncMock(return_value=mock_redis))
+        monkeypatch.setattr(
+            self.service, "_get_client", AsyncMock(return_value=mock_redis)
+        )
 
         cached = await self.service.cache_result("test-key", {"answer": 42})
         assert cached is True
@@ -187,7 +187,9 @@ class TestCacheService:
     async def test_cache_fallback_to_local(self, monkeypatch: MonkeyPatch) -> None:
         mock_redis = AsyncMock()
         mock_redis.setex.side_effect = Exception("Redis down")
-        monkeypatch.setattr(self.service, "_get_client", AsyncMock(return_value=mock_redis))
+        monkeypatch.setattr(
+            self.service, "_get_client", AsyncMock(return_value=mock_redis)
+        )
 
         cached = await self.service.cache_result("local-key", "local-value")
         assert cached is True
@@ -197,7 +199,9 @@ class TestCacheService:
     async def test_get_cached_miss(self, monkeypatch: MonkeyPatch) -> None:
         mock_redis = AsyncMock()
         mock_redis.get.return_value = None
-        monkeypatch.setattr(self.service, "_get_client", AsyncMock(return_value=mock_redis))
+        monkeypatch.setattr(
+            self.service, "_get_client", AsyncMock(return_value=mock_redis)
+        )
 
         result = await self.service.get_cached("nonexistent")
         assert result is None
@@ -207,7 +211,9 @@ class TestCacheService:
         mock_redis = AsyncMock()
         mock_redis.scan.return_value = (0, ["key1", "key2"])
         mock_redis.delete.return_value = 2
-        monkeypatch.setattr(self.service, "_get_client", AsyncMock(return_value=mock_redis))
+        monkeypatch.setattr(
+            self.service, "_get_client", AsyncMock(return_value=mock_redis)
+        )
 
         result = await self.service.invalidate_cache("prefix:*")
         assert result is True
@@ -241,13 +247,18 @@ class TestNotificationService:
 
     @pytest.mark.asyncio
     async def test_send_event_no_webhook(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr("src.services.notification_service.settings.webhook_url", "")
+        monkeypatch.setattr(
+            "src.services.notification_service.settings.webhook_url", ""
+        )
         result = await self.service.send_event("test.event", {"key": "value"})
         assert result is True
 
     @pytest.mark.asyncio
     async def test_send_event_success(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr("src.services.notification_service.settings.webhook_url", "https://example.com/hook")
+        monkeypatch.setattr(
+            "src.services.notification_service.settings.webhook_url",
+            "https://example.com/hook",
+        )
 
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
@@ -263,7 +274,10 @@ class TestNotificationService:
 
     @pytest.mark.asyncio
     async def test_send_event_failure(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr("src.services.notification_service.settings.webhook_url", "https://example.com/hook")
+        monkeypatch.setattr(
+            "src.services.notification_service.settings.webhook_url",
+            "https://example.com/hook",
+        )
 
         async def _mock_post(*args, **kwargs):
             raise Exception("Network error")
@@ -276,7 +290,10 @@ class TestNotificationService:
 
     @pytest.mark.asyncio
     async def test_notify_task_completed(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr("src.services.notification_service.settings.webhook_url", "https://example.com/hook")
+        monkeypatch.setattr(
+            "src.services.notification_service.settings.webhook_url",
+            "https://example.com/hook",
+        )
 
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
@@ -287,12 +304,17 @@ class TestNotificationService:
         mock_client = _MockAsyncContextManager(_mock_post())
 
         with patch("httpx.AsyncClient", return_value=mock_client):
-            result = await self.service.notify_task_completed("task-123", {"answer": 42})
+            result = await self.service.notify_task_completed(
+                "task-123", {"answer": 42}
+            )
             assert result is True
 
     @pytest.mark.asyncio
     async def test_notify_task_failed(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr("src.services.notification_service.settings.webhook_url", "https://example.com/hook")
+        monkeypatch.setattr(
+            "src.services.notification_service.settings.webhook_url",
+            "https://example.com/hook",
+        )
 
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None

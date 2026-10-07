@@ -28,28 +28,52 @@ class TestConversationMemory:
     @pytest.mark.asyncio
     async def test_get_history_with_data(self) -> None:
         existing = [
-            {"role": "user", "content": "Hi", "timestamp": "2024-01-01", "metadata": {}},
-            {"role": "assistant", "content": "Hello!", "timestamp": "2024-01-01", "metadata": {}},
+            {
+                "role": "user",
+                "content": "Hi",
+                "timestamp": "2024-01-01",
+                "metadata": {},
+            },
+            {
+                "role": "assistant",
+                "content": "Hello!",
+                "timestamp": "2024-01-01",
+                "metadata": {},
+            },
         ]
 
-        with patch("src.services.memory_service.cache_service.get_cached", AsyncMock(return_value=existing)):
+        with patch(
+            "src.services.memory_service.cache_service.get_cached",
+            AsyncMock(return_value=existing),
+        ):
             history = await self.memory.get_history()
             assert len(history) == 2
 
     @pytest.mark.asyncio
     async def test_get_summary(self) -> None:
         existing = [
-            {"role": "user", "content": "Hi", "timestamp": "2024-01-01", "metadata": {}},
+            {
+                "role": "user",
+                "content": "Hi",
+                "timestamp": "2024-01-01",
+                "metadata": {},
+            },
         ]
 
-        with patch("src.services.memory_service.cache_service.get_cached", AsyncMock(return_value=existing)):
+        with patch(
+            "src.services.memory_service.cache_service.get_cached",
+            AsyncMock(return_value=existing),
+        ):
             summary = await self.memory.get_summary()
             assert summary["session_id"] == "test-session"
             assert summary["message_count"] == 1
 
     @pytest.mark.asyncio
     async def test_clear(self) -> None:
-        with patch("src.services.memory_service.cache_service.invalidate_cache", AsyncMock(return_value=True)):
+        with patch(
+            "src.services.memory_service.cache_service.invalidate_cache",
+            AsyncMock(return_value=True),
+        ):
             await self.memory.clear()
 
     @pytest.mark.asyncio
@@ -57,11 +81,19 @@ class TestConversationMemory:
         small_memory = ConversationMemory("small-session", max_history=3)
         mock_cache = AsyncMock()
         mock_cache.get_cached.return_value = [
-            {"role": "user", "content": f"msg{i}", "timestamp": "2024-01-01", "metadata": {}}
+            {
+                "role": "user",
+                "content": f"msg{i}",
+                "timestamp": "2024-01-01",
+                "metadata": {},
+            }
             for i in range(5)
         ]
 
-        with patch("src.services.memory_service.cache_service.get_cached", mock_cache.get_cached):
+        with patch(
+            "src.services.memory_service.cache_service.get_cached",
+            mock_cache.get_cached,
+        ):
             history = await small_memory.get_history()
             assert len(history) == 5
 
@@ -111,7 +143,12 @@ class TestAgentMemoryManager:
     async def test_store_agent_result_with_memory(self) -> None:
         mock_cache = AsyncMock()
         mock_cache.get_cached.return_value = [
-            {"role": "user", "content": "prior query", "timestamp": "2024-01-01", "metadata": {}}
+            {
+                "role": "user",
+                "content": "prior query",
+                "timestamp": "2024-01-01",
+                "metadata": {},
+            }
         ]
         mock_cache.cache_result.return_value = True
 
@@ -124,5 +161,8 @@ class TestAgentMemoryManager:
                 session_id="session-2",
                 agent_type="research",
                 query="New search",
-                result={"result": {"llm_response": "Results found"}, "status": "completed"},
+                result={
+                    "result": {"llm_response": "Results found"},
+                    "status": "completed",
+                },
             )

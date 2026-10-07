@@ -88,12 +88,16 @@ class TestFileTool:
 
     @pytest.mark.asyncio
     async def test_file_not_found(self) -> None:
-        result = await self.tool.execute(action="read", path="_nonexistent_file_xyz.txt")
+        result = await self.tool.execute(
+            action="read", path="_nonexistent_file_xyz.txt"
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_list_nonexistent_directory(self) -> None:
-        result = await self.tool.execute(action="list", directory="_nonexistent_dir_xyz")
+        result = await self.tool.execute(
+            action="list", directory="_nonexistent_dir_xyz"
+        )
         assert result["result"] == []
 
     @pytest.mark.asyncio
@@ -103,7 +107,9 @@ class TestFileTool:
 
     @pytest.mark.asyncio
     async def test_file_exists_nonexistent(self) -> None:
-        result = await self.tool.execute(action="exists", path="_nonexistent_file_xyz.txt")
+        result = await self.tool.execute(
+            action="exists", path="_nonexistent_file_xyz.txt"
+        )
         assert result["result"] is False
 
 
@@ -121,6 +127,123 @@ class TestDatabaseTool:
         result = await self.tool.execute(action="query", sql="")
         assert "error" in result or "result" in result
 
+    @pytest.mark.asyncio
+    async def test_execute_query_rejects_non_select(self) -> None:
+        result = await self.tool.execute(
+            action="query", sql="DELETE FROM tasks WHERE 1=1"
+        )
+        assert "error" in result
+        assert "SELECT" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_execute_query_rejects_stacked_statements(self) -> None:
+        result = await self.tool.execute(
+            action="query", sql="SELECT 1; DROP TABLE tasks"
+        )
+        assert "error" in result
+        assert "SELECT" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_execute_query_allows_select(self) -> None:
+        mock_db = MagicMock()
+        mock_result = MagicMock()
+        mock_result.returns_rows = True
+        mock_result.__iter__.return_value = iter([])
+        mock_db.execute.return_value = mock_result
+
+        with patch(
+            "src.mcp_tools.database_tool.SessionLocal", return_value=mock_db
+        ):
+            result = await self.tool.execute(
+                action="query", sql="SELECT * FROM tasks"
+            )
+        assert result["result"] == []
+
+    @pytest.mark.asyncio
+    async def test_insert_record_rejects_unknown_table(self) -> None:
+        result = await self.tool.execute(
+            action="insert", table="users; DROP TABLE tasks", data={"query": "x"}
+        )
+        assert "error" in result
+        assert "table" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_insert_record_rejects_unknown_column(self) -> None:
+        result = await self.tool.execute(
+            action="insert", table="tasks", data={"malicious_column": "x"}
+        )
+        assert "error" in result
+        assert "column" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_insert_record_allows_known_table_and_columns(self) -> None:
+        mock_db = MagicMock()
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = (1,)
+        mock_db.execute.return_value = mock_result
+
+        with patch(
+            "src.mcp_tools.database_tool.SessionLocal", return_value=mock_db
+        ):
+            result = await self.tool.execute(
+                action="insert",
+                table="tasks",
+                data={"query": "hello", "agent_type": "query"},
+            )
+        assert result["result"] == 1
+
+    @pytest.mark.asyncio
+    async def test_update_record_rejects_unknown_table(self) -> None:
+        result = await self.tool.execute(
+            action="update", table="not_a_table", id=1, data={"status": "done"}
+        )
+        assert "error" in result
+        assert "table" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_update_record_rejects_unknown_column(self) -> None:
+        result = await self.tool.execute(
+            action="update", table="tasks", id=1, data={"is_admin": True}
+        )
+        assert "error" in result
+        assert "column" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_delete_record_rejects_unknown_table(self) -> None:
+        result = await self.tool.execute(action="delete", table="not_a_table", id=1)
+        assert "error" in result
+        assert "table" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_list_records_rejects_unknown_table(self) -> None:
+        result = await self.tool.execute(action="list", table="not_a_table")
+        assert "error" in result
+        assert "table" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_list_records_rejects_unknown_filter_column(self) -> None:
+        result = await self.tool.execute(
+            action="list", table="tasks", filters={"1=1 OR ": "x"}
+        )
+        assert "error" in result
+        assert "column" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_list_records_allows_known_table_and_filters(self) -> None:
+        mock_db = MagicMock()
+        mock_result = MagicMock()
+        mock_result.returns_rows = True
+        mock_result.__iter__.return_value = iter([])
+        mock_db.execute.return_value = mock_result
+
+        with patch(
+            "src.mcp_tools.database_tool.SessionLocal", return_value=mock_db
+        ):
+            result = await self.tool.execute(
+                action="list", table="tasks", filters={"status": "pending"}
+            )
+        assert result["result"] == []
+
 
 class TestSearchTool:
     def setup_method(self) -> None:
@@ -134,14 +257,18 @@ class TestSearchTool:
     @pytest.mark.asyncio
     async def test_semantic_search_no_api_key(self, monkeypatch) -> None:
         monkeypatch.setattr("src.mcp_tools.search_tool.settings.openai_api_key", "")
-        result = await self.tool.execute(action="semantic_search", query="test", index="docs")
+        result = await self.tool.execute(
+            action="semantic_search", query="test", index="docs"
+        )
         assert "result" in result
         assert "Set OPENAI_API_KEY" in str(result["result"])
 
     @pytest.mark.asyncio
     async def test_similarity_search_no_api_key(self, monkeypatch) -> None:
         monkeypatch.setattr("src.mcp_tools.search_tool.settings.openai_api_key", "")
-        result = await self.tool.execute(action="similarity_search", text="test", top_k=3)
+        result = await self.tool.execute(
+            action="similarity_search", text="test", top_k=3
+        )
         assert "result" in result
         assert "Set OPENAI_API_KEY" in str(result["result"])
 

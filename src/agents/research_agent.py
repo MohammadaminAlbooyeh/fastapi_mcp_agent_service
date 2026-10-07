@@ -12,7 +12,9 @@ class ResearchAgent(BaseAgent):
     name: str = "research"
     description: str = "For information gathering and research"
     tools: list[str] = ["search_tool", "api_tool"]
-    SYSTEM_PROMPT: str = "You are a research assistant. Synthesize search results into a coherent answer."
+    SYSTEM_PROMPT: str = (
+        "You are a research assistant. Synthesize search results into a coherent answer."
+    )
 
     def build_graph(self) -> StateGraph:
         def analyze(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -21,7 +23,9 @@ class ResearchAgent(BaseAgent):
         async def execute_tools(state: Dict[str, Any]) -> Dict[str, Any]:
             results: List[Dict[str, Any]] = []
             search = tools_registry.get("search_tool")
-            sr = await search.execute(action="web_search", query=state.get("research_topic", ""))
+            sr = await search.execute(
+                action="web_search", query=state.get("research_topic", "")
+            )
             results.append(sr)
             return {"intermediate_results": results}
 

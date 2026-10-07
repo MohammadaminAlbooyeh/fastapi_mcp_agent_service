@@ -86,7 +86,9 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_api_tool_blocks_private_address(self) -> None:
         tool = APITool()
-        with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("127.0.0.1", 0))]):
+        with patch(
+            "socket.getaddrinfo", return_value=[(2, 1, 6, "", ("127.0.0.1", 0))]
+        ):
             result = await tool.execute(
                 action="http_request",
                 method="GET",
@@ -98,7 +100,9 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_api_tool_blocks_cloud_metadata_address(self) -> None:
         tool = APITool()
-        with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("169.254.169.254", 0))]):
+        with patch(
+            "socket.getaddrinfo", return_value=[(2, 1, 6, "", ("169.254.169.254", 0))]
+        ):
             result = await tool.execute(
                 action="rest_api",
                 endpoint="http://169.254.169.254/latest/meta-data/",
@@ -122,7 +126,9 @@ class TestMCPIntegration:
         tool = FileTool()
         tool.ALLOWED_BASE = tmp_path
 
-        result = await tool.execute(action="write", path="test.txt", content="hello world")
+        result = await tool.execute(
+            action="write", path="test.txt", content="hello world"
+        )
         assert result["result"] is True
 
         result = await tool.execute(action="read", path="test.txt")

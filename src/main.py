@@ -24,6 +24,7 @@ security_basic = HTTPBasic()
 
 if settings.sentry_dsn:
     import sentry_sdk
+
     sentry_sdk.init(
         dsn=settings.sentry_dsn,
         environment=settings.environment,
@@ -74,7 +75,9 @@ async def get_metrics():
 
 
 @app.post("/api/v1/auth/token")
-async def get_token(credentials: HTTPBasicCredentials = Depends(security_basic)) -> dict:
+async def get_token(
+    credentials: HTTPBasicCredentials = Depends(security_basic),
+) -> dict:
     await authenticate_with_api_key(credentials.password)
     token = create_access_token({"sub": credentials.username, "role": "user"})
     return {"access_token": token, "token_type": "bearer"}

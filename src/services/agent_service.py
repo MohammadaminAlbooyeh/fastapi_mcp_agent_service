@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from typing import Any, AsyncGenerator, Dict, Optional
@@ -10,6 +11,8 @@ from src.services.approval_service import approval_service
 from src.services.memory_service import agent_memory_manager
 from src.services.notification_service import notification_service
 from src.services.task_service import task_service
+
+DEFAULT_EXECUTION_TIMEOUT = 60
 
 
 class AgentService:
@@ -39,7 +42,9 @@ class AgentService:
                 decision = await req.wait_for_decision()
                 if decision.value != "approved":
                     elapsed = time.time() - start
-                    await task_service.save_error(task_id, f"Approval rejected: {decision.value}")
+                    await task_service.save_error(
+                        task_id, f"Approval rejected: {decision.value}"
+                    )
                     return {
                         "task_id": task_id,
                         "status": "rejected",
@@ -47,18 +52,42 @@ class AgentService:
                         "execution_time": elapsed,
                     }
 
-            result = await orchestrator.execute(query=query, agent_type=agent_type, tools=tools, **kwargs)
+            # max_iterations has no effect: agents run as a single-pass LangGraph
+            # pipeline rather than an iterative loop, so there is no iteration
+            # count to bound. timeout IS enforced below — without it, a stuck
+            # tool call (e.g. a slow external API) would hang the request forever.
+            kwargs.pop("max_iterations", None)
+            timeout = kwargs.pop("timeout", None) or DEFAULT_EXECUTION_TIMEOUT
+            result = await asyncio.wait_for(
+                orchestrator.execute(
+                    query=query, agent_type=agent_type, tools=tools, **kwargs
+                ),
+                timeout=timeout,
+            )
             elapsed = time.time() - start
             await task_service.save_result(task_id, result, elapsed)
             await notification_service.notify_task_completed(task_id, result)
 
             if session_id:
-                await agent_memory_manager.store_agent_result(session_id, agent_type, query, result)
+                await agent_memory_manager.store_agent_result(
+                    session_id, agent_type, query, result
+                )
 
             return {
                 "task_id": task_id,
                 "status": "completed",
                 "result": result,
+                "execution_time": elapsed,
+            }
+        except asyncio.TimeoutError:
+            elapsed = time.time() - start
+            error = f"Execution timed out after {timeout}s"
+            await task_service.save_error(task_id, error)
+            await notification_service.notify_task_failed(task_id, error)
+            return {
+                "task_id": task_id,
+                "status": "timeout",
+                "error": error,
                 "execution_time": elapsed,
             }
         except Exception as e:
@@ -86,8 +115,13 @@ class AgentService:
         yield f"data: {json.dumps({'event': 'start', 'task_id': task_id, 'agent': agent_type})}\n\n"
         yield f"data: {json.dumps({'event': 'status', 'message': f'Processing query: {query}'})}\n\n"
 
+        timeout = kwargs.pop("timeout", None) or DEFAULT_EXECUTION_TIMEOUT
+        kwargs.pop("max_iterations", None)
         try:
-            result = await orchestrator.execute(query=query, agent_type=agent_type, **kwargs)
+            result = await asyncio.wait_for(
+                orchestrator.execute(query=query, agent_type=agent_type, **kwargs),
+                timeout=timeout,
+            )
             llm_text = result.get("result", {}).get("llm_response", "")
             if llm_text:
                 for chunk in llm_text.split(" "):
@@ -95,7 +129,9 @@ class AgentService:
             await task_service.save_result(task_id, result)
 
             if session_id:
-                await agent_memory_manager.store_agent_result(session_id, agent_type, query, result)
+                await agent_memory_manager.store_agent_result(
+                    session_id, agent_type, query, result
+                )
 
             yield f"data: {json.dumps({'event': 'result', 'task_id': task_id, 'result': str(result)})}\n\n"
             yield f"data: {json.dumps({'event': 'done', 'task_id': task_id, 'status': 'completed'})}\n\n"

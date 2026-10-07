@@ -64,7 +64,9 @@ class APITool(BaseTool):
                 "body": response.text,
             }
 
-    async def call_rest_api(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def call_rest_api(
+        self, endpoint: str, params: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         await _ensure_safe_url(endpoint)
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(endpoint, params=params)
@@ -73,7 +75,9 @@ class APITool(BaseTool):
                 "body": response.text,
             }
 
-    async def call_graphql(self, endpoint: str, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def call_graphql(
+        self, endpoint: str, query: str, variables: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         await _ensure_safe_url(endpoint)
         payload: Dict[str, Any] = {"query": query}
         if variables:
@@ -96,9 +100,15 @@ class APITool(BaseTool):
                     kwargs.get("body"),
                 )
             elif action == "rest_api":
-                result = await self.call_rest_api(kwargs.get("endpoint", ""), kwargs.get("params"))
+                result = await self.call_rest_api(
+                    kwargs.get("endpoint", ""), kwargs.get("params")
+                )
             elif action == "graphql":
-                result = await self.call_graphql(kwargs.get("endpoint", ""), kwargs.get("query", ""), kwargs.get("variables"))
+                result = await self.call_graphql(
+                    kwargs.get("endpoint", ""),
+                    kwargs.get("query", ""),
+                    kwargs.get("variables"),
+                )
             else:
                 return {"tool": self.name, "error": f"Unknown action: {action}"}
             return {"tool": self.name, "action": action, "result": result}

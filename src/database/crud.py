@@ -25,11 +25,7 @@ class CRUD:
         return task
 
     def get_task(self, task_id: str) -> Optional[TaskRecord]:
-        return (
-            self.db.query(TaskRecord)
-            .filter(TaskRecord.task_id == task_id)
-            .first()
-        )
+        return self.db.query(TaskRecord).filter(TaskRecord.task_id == task_id).first()
 
     def update_task(
         self, task_id: str, updates: Dict[str, Any]
@@ -42,13 +38,9 @@ class CRUD:
             self.db.refresh(task)
         return task
 
-    def list_tasks(
-        self, filters: Optional[Dict[str, Any]] = None
-    ) -> List[TaskRecord]:
+    def list_tasks(self, filters: Optional[Dict[str, Any]] = None) -> List[TaskRecord]:
         query = self.db.query(TaskRecord)
         if filters:
             for key, value in filters.items():
-                query = query.filter(
-                    getattr(TaskRecord, key) == value
-                )
+                query = query.filter(getattr(TaskRecord, key) == value)
         return query.order_by(TaskRecord.created_at.desc()).all()

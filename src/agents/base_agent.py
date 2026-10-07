@@ -4,6 +4,8 @@ from typing import Any, AsyncGenerator, Dict, List
 
 from langgraph.graph import StateGraph
 
+from src.config.logger import logger
+from src.config.settings import settings
 from src.services.llm_service import llm_service
 
 
@@ -61,9 +63,13 @@ class BaseAgent:
                 "result": final.get("result", final.get("llm_response", {})),
             }
         except Exception as e:
+            logger.exception(f"Agent {self.name!r} failed for query {query!r}: {e}")
+            # Exception messages can carry internal details (DB connection
+            # strings, file paths, stack traces); only surface them in debug.
+            error = str(e) if settings.debug else "Agent execution failed"
             return {
                 "agent": self.name,
                 "query": query,
                 "status": "failed",
-                "error": str(e),
+                "error": error,
             }

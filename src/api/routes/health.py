@@ -29,6 +29,7 @@ async def detailed_health() -> dict:
     try:
         import redis.asyncio as aioredis
         from src.config.settings import settings
+
         client = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
         await client.ping()
         await client.aclose()

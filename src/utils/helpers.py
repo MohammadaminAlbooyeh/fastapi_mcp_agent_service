@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import uuid
 from datetime import datetime
-from typing import Any
 
 
 def generate_task_id() -> str:

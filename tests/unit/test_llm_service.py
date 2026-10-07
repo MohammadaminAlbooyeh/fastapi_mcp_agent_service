@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -35,7 +35,9 @@ class TestLLMService:
 
     @pytest.mark.asyncio
     async def test_anthropic_generate(self, monkeypatch) -> None:
-        monkeypatch.setattr("src.services.llm_service.settings.anthropic_api_key", "sk-test")
+        monkeypatch.setattr(
+            "src.services.llm_service.settings.anthropic_api_key", "sk-test"
+        )
         monkeypatch.setattr("src.services.llm_service.settings.openai_api_key", "")
 
         mock_message = MagicMock()
@@ -43,7 +45,9 @@ class TestLLMService:
         mock_client = AsyncMock()
         mock_client.messages.create.return_value = mock_message
 
-        monkeypatch.setattr(self.service, "_get_anthropic", AsyncMock(return_value=mock_client))
+        monkeypatch.setattr(
+            self.service, "_get_anthropic", AsyncMock(return_value=mock_client)
+        )
 
         result = await self.service.generate("Say hello")
         assert result == "Hello from Claude"
@@ -51,7 +55,9 @@ class TestLLMService:
     @pytest.mark.asyncio
     async def test_openai_generate(self, monkeypatch) -> None:
         monkeypatch.setattr("src.services.llm_service.settings.anthropic_api_key", "")
-        monkeypatch.setattr("src.services.llm_service.settings.openai_api_key", "sk-test")
+        monkeypatch.setattr(
+            "src.services.llm_service.settings.openai_api_key", "sk-test"
+        )
 
         mock_choice = MagicMock()
         mock_choice.message.content = "Hello from GPT"
@@ -60,14 +66,18 @@ class TestLLMService:
         mock_client = AsyncMock()
         mock_client.chat.completions.create.return_value = mock_response
 
-        monkeypatch.setattr(self.service, "_get_openai", AsyncMock(return_value=mock_client))
+        monkeypatch.setattr(
+            self.service, "_get_openai", AsyncMock(return_value=mock_client)
+        )
 
         result = await self.service.generate("Say hello", system_prompt="Be nice")
         assert result == "Hello from GPT"
 
     @pytest.mark.asyncio
     async def test_anthropic_stream(self, monkeypatch) -> None:
-        monkeypatch.setattr("src.services.llm_service.settings.anthropic_api_key", "sk-test")
+        monkeypatch.setattr(
+            "src.services.llm_service.settings.anthropic_api_key", "sk-test"
+        )
         monkeypatch.setattr("src.services.llm_service.settings.openai_api_key", "")
 
         class _AsyncTextStream:
@@ -101,7 +111,9 @@ class TestLLMService:
         mock_client = MagicMock()
         mock_client.messages = mock_messages
 
-        monkeypatch.setattr(self.service, "_get_anthropic", AsyncMock(return_value=mock_client))
+        monkeypatch.setattr(
+            self.service, "_get_anthropic", AsyncMock(return_value=mock_client)
+        )
 
         chunks = []
         async for chunk in self.service.stream_generate("Say hello"):
@@ -111,7 +123,9 @@ class TestLLMService:
     @pytest.mark.asyncio
     async def test_openai_stream(self, monkeypatch) -> None:
         monkeypatch.setattr("src.services.llm_service.settings.anthropic_api_key", "")
-        monkeypatch.setattr("src.services.llm_service.settings.openai_api_key", "sk-test")
+        monkeypatch.setattr(
+            "src.services.llm_service.settings.openai_api_key", "sk-test"
+        )
 
         class _AsyncChunkStream:
             def __init__(self):
@@ -142,7 +156,9 @@ class TestLLMService:
         mock_client = MagicMock()
         mock_client.chat = mock_chat
 
-        monkeypatch.setattr(self.service, "_get_openai", AsyncMock(return_value=mock_client))
+        monkeypatch.setattr(
+            self.service, "_get_openai", AsyncMock(return_value=mock_client)
+        )
 
         chunks = []
         async for chunk in self.service.stream_generate("Say hello"):
