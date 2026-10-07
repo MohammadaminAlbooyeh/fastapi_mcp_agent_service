@@ -20,7 +20,12 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
 
 
 def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict[str, Any]:
-    if settings.environment == "development" and credentials is None:
+    if (
+        settings.environment == "development"
+        and settings.debug
+        and settings.secret_key == "change-me-in-production"
+        and credentials is None
+    ):
         return {"sub": "dev-user", "role": "admin"}
     if credentials is None:
         raise HTTPException(

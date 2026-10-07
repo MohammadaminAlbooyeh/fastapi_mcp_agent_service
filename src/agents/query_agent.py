@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List
 
 from langgraph.graph import END, START, StateGraph
 
 from src.agents.base_agent import BaseAgent
 from src.mcp_tools.tools_registry import tools_registry
+from src.services.llm_service import llm_service
+
+_SQL_FENCE_RE = re.compile(r"^```(?:sql)?\s*|\s*```$", re.IGNORECASE | re.MULTILINE)
 
 
 class QueryAgent(BaseAgent):
@@ -14,9 +18,18 @@ class QueryAgent(BaseAgent):
     tools: list[str] = ["database_tool"]
     SYSTEM_PROMPT: str = "You are a database query assistant. Interpret the user's request and explain the query results."
 
+    SQL_GENERATION_PROMPT: str = (
+        "Convert the following request into a single, read-only SQL SELECT statement. "
+        "Respond with only the SQL statement and nothing else — no explanation, no markdown fences.\n\n"
+        "Request: {query}"
+    )
+
     def build_graph(self) -> StateGraph:
-        def analyze(state: Dict[str, Any]) -> Dict[str, Any]:
-            return {"sql_query": state.get("query", "")}
+        async def analyze(state: Dict[str, Any]) -> Dict[str, Any]:
+            query = state.get("query", "")
+            raw_sql = await llm_service.generate(self.SQL_GENERATION_PROMPT.format(query=query))
+            sql = _SQL_FENCE_RE.sub("", raw_sql).strip()
+            return {"sql_query": sql}
 
         async def execute_tools(state: Dict[str, Any]) -> Dict[str, Any]:
             tool = tools_registry.get("database_tool")

@@ -70,7 +70,10 @@ class TestMCPIntegration:
         mock_client.request.return_value = mock_response
         mock_client.__aenter__.return_value = mock_client
 
-        with patch("httpx.AsyncClient", return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client), patch(
+            "socket.getaddrinfo",
+            return_value=[(2, 1, 6, "", ("93.184.216.34", 0))],
+        ):
             result = await tool.execute(
                 action="http_request",
                 method="GET",
@@ -79,6 +82,40 @@ class TestMCPIntegration:
             assert result["tool"] == "api_tool"
             assert result["action"] == "http_request"
             assert result["result"]["status_code"] == 200
+
+    @pytest.mark.asyncio
+    async def test_api_tool_blocks_private_address(self) -> None:
+        tool = APITool()
+        with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("127.0.0.1", 0))]):
+            result = await tool.execute(
+                action="http_request",
+                method="GET",
+                url="http://127.0.0.1/admin",
+            )
+            assert "error" in result
+            assert "not allowed" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_api_tool_blocks_cloud_metadata_address(self) -> None:
+        tool = APITool()
+        with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("169.254.169.254", 0))]):
+            result = await tool.execute(
+                action="rest_api",
+                endpoint="http://169.254.169.254/latest/meta-data/",
+            )
+            assert "error" in result
+            assert "not allowed" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_api_tool_blocks_non_http_scheme(self) -> None:
+        tool = APITool()
+        result = await tool.execute(
+            action="http_request",
+            method="GET",
+            url="file:///etc/passwd",
+        )
+        assert "error" in result
+        assert "scheme" in result["error"]
 
     @pytest.mark.asyncio
     async def test_file_tool_write_and_read(self, tmp_path) -> None:

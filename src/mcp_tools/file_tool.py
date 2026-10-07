@@ -45,8 +45,9 @@ class FileTool(BaseTool):
         return exists
 
     def _resolve(self, path: str) -> Path:
-        full = (self.ALLOWED_BASE / path).resolve()
-        if not str(full).startswith(str(self.ALLOWED_BASE.resolve())):
+        base = self.ALLOWED_BASE.resolve()
+        full = (base / path).resolve()
+        if full != base and base not in full.parents:
             raise PermissionError(f"Access denied: {path} is outside allowed directory")
         return full
 

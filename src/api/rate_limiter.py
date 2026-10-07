@@ -8,6 +8,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
+from src.config.logger import logger
 from src.config.settings import settings
 
 
@@ -29,9 +30,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             await client.ping()
             self._redis = client
             self._redis_available = True
-        except Exception:
+        except Exception as e:
             self._redis = None
             self._redis_available = False
+            logger.warning(
+                "Rate limiter could not connect to Redis (%s); falling back to "
+                "in-memory, per-process rate limiting. This is NOT safe across "
+                "multiple workers/instances — each process will enforce its own "
+                "independent limit, effectively multiplying the allowed request rate.",
+                e,
+            )
         return self._redis_available
 
     async def dispatch(self, request: Request, call_next):
@@ -51,8 +59,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     )
                 await self._redis.zadd(key, {str(now): now})
                 await self._redis.expire(key, self.window_seconds * 2)
-            except Exception:
+            except Exception as e:
                 self._redis_available = False
+                logger.warning(
+                    "Rate limiter lost its Redis connection mid-request (%s); "
+                    "falling back to in-memory, per-process rate limiting, which "
+                    "is not consistent across multiple workers/instances.",
+                    e,
+                )
                 return await call_next(request)
             return await call_next(request)
 

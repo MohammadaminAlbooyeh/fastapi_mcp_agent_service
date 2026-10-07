@@ -161,7 +161,9 @@ class TestAPITool:
         mock_client.request.return_value = mock_response
         mock_client.__aenter__.return_value = mock_client
 
-        with patch("httpx.AsyncClient", return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client), patch(
+            "socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 0))]
+        ):
             result = await self.tool.execute(
                 action="http_request",
                 method="GET",
@@ -180,7 +182,9 @@ class TestAPITool:
         mock_client.get.return_value = mock_response
         mock_client.__aenter__.return_value = mock_client
 
-        with patch("httpx.AsyncClient", return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client), patch(
+            "socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 0))]
+        ):
             result = await self.tool.execute(
                 action="rest_api",
                 endpoint="https://api.example.com/items",
@@ -197,7 +201,9 @@ class TestAPITool:
         mock_client.post.return_value = mock_response
         mock_client.__aenter__.return_value = mock_client
 
-        with patch("httpx.AsyncClient", return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client), patch(
+            "socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 0))]
+        ):
             result = await self.tool.execute(
                 action="graphql",
                 endpoint="https://api.example.com/graphql",

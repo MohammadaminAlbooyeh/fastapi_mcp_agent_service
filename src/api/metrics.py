@@ -45,6 +45,18 @@ TOOL_EXECUTIONS = Counter(
 )
 
 
+def _endpoint_label(request: Request) -> str:
+    """Uses the matched route's path template (e.g. "/api/v1/agent/status/{task_id}")
+    rather than the raw request path. Labeling by raw path would create a new,
+    permanent Prometheus time series for every distinct task_id/request_id ever
+    seen — unbounded cardinality growth that leaks those IDs through the
+    unauthenticated /metrics endpoint and leads to steadily growing memory use."""
+    route = request.scope.get("route")
+    if route is not None and getattr(route, "path", None):
+        return route.path
+    return request.url.path
+
+
 class MetricsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable):
         if request.url.path == "/metrics":
@@ -54,24 +66,25 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         start = time.time()
         try:
             response = await call_next(request)
+            endpoint = _endpoint_label(request)
             status_group = f"{response.status_code // 100}xx"
             REQUEST_COUNT.labels(
                 method=request.method,
-                endpoint=request.url.path,
+                endpoint=endpoint,
                 status=status_group,
             ).inc()
             return response
         except Exception:
             REQUEST_COUNT.labels(
                 method=request.method,
-                endpoint=request.url.path,
+                endpoint=_endpoint_label(request),
                 status="5xx",
             ).inc()
             raise
         finally:
             REQUEST_DURATION.labels(
                 method=request.method,
-                endpoint=request.url.path,
+                endpoint=_endpoint_label(request),
             ).observe(time.time() - start)
             ACTIVE_REQUESTS.dec()
 

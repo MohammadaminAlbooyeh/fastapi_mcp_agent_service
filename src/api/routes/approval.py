@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api/v1/approval", tags=["approval"])
 
 @router.get("/requests")
 async def list_pending_requests():
-    return {"requests": approval_service.get_pending_requests()}
+    return {"requests": await approval_service.get_pending_requests()}
 
 
 @router.post("/requests/{request_id}/approve")
