@@ -25,3 +25,38 @@ class TestAPIEndpoints:
     def test_get_nonexistent_tool(self, client: TestClient) -> None:
         response = client.get("/api/v1/tools/nonexistent")
         assert response.status_code == 404
+
+    def test_execute_rejects_unknown_agent_type(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/v1/agent/execute",
+            json={"query": "hello", "agent_type": "not-a-real-agent"},
+        )
+        assert response.status_code == 400
+
+    def test_stream_rejects_unknown_agent_type(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/v1/agent/stream",
+            json={"query": "hello", "agent_type": "not-a-real-agent"},
+        )
+        assert response.status_code == 400
+
+    def test_execute_rejects_oversized_query(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/v1/agent/execute",
+            json={"query": "x" * 10_001, "agent_type": "query"},
+        )
+        assert response.status_code == 422
+
+    def test_execute_rejects_empty_query(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/v1/agent/execute",
+            json={"query": "", "agent_type": "query"},
+        )
+        assert response.status_code == 422
+
+    def test_execute_rejects_out_of_range_timeout(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/v1/agent/execute",
+            json={"query": "hi", "agent_type": "query", "timeout": 100_000},
+        )
+        assert response.status_code == 422

@@ -7,6 +7,7 @@ from typing import Any, AsyncGenerator, Dict, Optional
 
 from src.agents.orchestrator import orchestrator
 from src.config.logger import logger
+from src.config.settings import settings
 from src.services.approval_service import approval_service
 from src.services.memory_service import agent_memory_manager
 from src.services.notification_service import notification_service
@@ -92,12 +93,16 @@ class AgentService:
             }
         except Exception as e:
             elapsed = time.time() - start
+            logger.exception(f"agent_service.execute failed for task {task_id}: {e}")
             await task_service.save_error(task_id, str(e))
             await notification_service.notify_task_failed(task_id, str(e))
+            # Exception messages can carry internal details (DB connection
+            # strings, file paths, stack traces); only surface them in debug.
+            error = str(e) if settings.debug else "Agent execution failed"
             return {
                 "task_id": task_id,
                 "status": "failed",
-                "error": str(e),
+                "error": error,
                 "execution_time": elapsed,
             }
 
@@ -137,9 +142,11 @@ class AgentService:
             yield f"data: {json.dumps({'event': 'done', 'task_id': task_id, 'status': 'completed'})}\n\n"
             await notification_service.notify_task_completed(task_id, result)
         except Exception as e:
+            logger.exception(f"agent_service.stream failed for task {task_id}: {e}")
             await task_service.save_error(task_id, str(e))
             await notification_service.notify_task_failed(task_id, str(e))
-            yield f"data: {json.dumps({'event': 'error', 'task_id': task_id, 'error': str(e)})}\n\n"
+            error = str(e) if settings.debug else "Agent execution failed"
+            yield f"data: {json.dumps({'event': 'error', 'task_id': task_id, 'error': error})}\n\n"
 
     async def cancel(self, task_id: str) -> bool:
         task = await task_service.get_task(task_id)

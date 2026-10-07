@@ -7,6 +7,7 @@ from src.api.auth import verify_token
 from src.models.request import AgentExecuteRequest
 from src.models.response import TaskResponse
 from src.services.agent_service import agent_service
+from src.utils.validators import validate_agent_type
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent"])
 
@@ -16,6 +17,10 @@ async def execute_agent(
     request: AgentExecuteRequest,
     _=Depends(verify_token),
 ) -> TaskResponse:
+    if not validate_agent_type(request.agent_type):
+        raise HTTPException(
+            status_code=400, detail=f"Unknown agent_type: {request.agent_type!r}"
+        )
     result = await agent_service.execute(
         query=request.query,
         agent_type=request.agent_type,
@@ -37,6 +42,10 @@ async def stream_agent(
     request: AgentExecuteRequest,
     _=Depends(verify_token),
 ):
+    if not validate_agent_type(request.agent_type):
+        raise HTTPException(
+            status_code=400, detail=f"Unknown agent_type: {request.agent_type!r}"
+        )
     return StreamingResponse(
         agent_service.stream(
             query=request.query,

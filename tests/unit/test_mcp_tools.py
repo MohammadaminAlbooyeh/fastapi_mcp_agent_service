@@ -151,12 +151,8 @@ class TestDatabaseTool:
         mock_result.__iter__.return_value = iter([])
         mock_db.execute.return_value = mock_result
 
-        with patch(
-            "src.mcp_tools.database_tool.SessionLocal", return_value=mock_db
-        ):
-            result = await self.tool.execute(
-                action="query", sql="SELECT * FROM tasks"
-            )
+        with patch("src.mcp_tools.database_tool.SessionLocal", return_value=mock_db):
+            result = await self.tool.execute(action="query", sql="SELECT * FROM tasks")
         assert result["result"] == []
 
     @pytest.mark.asyncio
@@ -182,9 +178,7 @@ class TestDatabaseTool:
         mock_result.fetchone.return_value = (1,)
         mock_db.execute.return_value = mock_result
 
-        with patch(
-            "src.mcp_tools.database_tool.SessionLocal", return_value=mock_db
-        ):
+        with patch("src.mcp_tools.database_tool.SessionLocal", return_value=mock_db):
             result = await self.tool.execute(
                 action="insert",
                 table="tasks",
@@ -236,9 +230,7 @@ class TestDatabaseTool:
         mock_result.__iter__.return_value = iter([])
         mock_db.execute.return_value = mock_result
 
-        with patch(
-            "src.mcp_tools.database_tool.SessionLocal", return_value=mock_db
-        ):
+        with patch("src.mcp_tools.database_tool.SessionLocal", return_value=mock_db):
             result = await self.tool.execute(
                 action="list", table="tasks", filters={"status": "pending"}
             )

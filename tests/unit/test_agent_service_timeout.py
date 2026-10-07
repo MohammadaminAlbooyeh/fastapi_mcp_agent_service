@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from src.config.settings import settings
 from src.services.agent_service import AgentService
 
 
@@ -46,6 +47,38 @@ class TestAgentServiceTimeout:
         assert result["status"] == "timeout"
         assert "timed out" in result["error"]
         save_error.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_execute_hides_raw_error_outside_debug(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(settings, "debug", False)
+        task = SimpleNamespace(task_id="task-timeout-3")
+
+        with patch(
+            "src.services.agent_service.task_service.create_task",
+            AsyncMock(return_value=task),
+        ), patch(
+            "src.services.agent_service.task_service.update_task_status", AsyncMock()
+        ), patch(
+            "src.services.agent_service.task_service.save_error", AsyncMock()
+        ), patch(
+            "src.services.agent_service.notification_service.notify_task_failed",
+            AsyncMock(),
+        ), patch(
+            "src.services.agent_service.orchestrator.execute",
+            AsyncMock(
+                side_effect=RuntimeError(
+                    "connection to postgresql://admin:s3cr3t@10.0.0.5/prod failed"
+                )
+            ),
+        ):
+            service = AgentService()
+            result = await service.execute(query="do something", agent_type="query")
+
+        assert result["status"] == "failed"
+        assert result["error"] == "Agent execution failed"
+        assert "s3cr3t" not in result["error"]
 
     @pytest.mark.asyncio
     async def test_execute_completes_normally_within_timeout(self) -> None:

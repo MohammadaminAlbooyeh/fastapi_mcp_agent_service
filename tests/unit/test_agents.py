@@ -113,7 +113,9 @@ class TestDataProcessorAgentExecution:
             assert name == "file_tool"
             return mock_file_tool
 
-        plan = '{"intent": "file_operation", "file_action": "read", "path": "notes.txt"}'
+        plan = (
+            '{"intent": "file_operation", "file_action": "read", "path": "notes.txt"}'
+        )
         mock_generate = _llm_generate_by_prompt(
             {
                 "Classify the following request": plan,
