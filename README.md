@@ -107,50 +107,95 @@ For the full contract, see [API Documentation](docs/API.md).
 
 ### High-Level Component Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      FastAPI Application                             │
-├─────────────────────────────────────────────────────────────────────┤
-│  API Routes                                                          │
-│  ├─ /agent/execute (Sync execution)                                 │
-│  ├─ /agent/stream (Streaming responses)                             │
-│  ├─ /agent/status, /agent/result, /agent/cancel                    │
-│  ├─ /tools (List & test MCP tools)                                  │
-│  ├─ /approval (Approval workflow)                                   │
-│  └─ /health (Health checks)                                         │
-├─────────────────────────────────────────────────────────────────────┤
-│  Middleware Layer                                                    │
-│  ├─ CORS Middleware                                                 │
-│  ├─ Error Handling Middleware                                       │
-│  ├─ Rate Limiting (100 req/min)                                     │
-│  └─ Metrics Collection (Prometheus)                                 │
-├─────────────────────────────────────────────────────────────────────┤
-│  Service Layer                                                       │
-│  ├─ AgentService (Orchestration)                                    │
-│  ├─ TaskService (Persistence)                                       │
-│  ├─ LLMService (Claude API)                                         │
-│  ├─ CacheService (Redis)                                            │
-│  ├─ NotificationService (Webhooks)                                  │
-│  ├─ ApprovalService (Human-in-the-loop)                            │
-│  └─ MemoryService (Agent conversations)                             │
-├─────────────────────────────────────────────────────────────────────┤
-│  Agent Layer (LangGraph)                                             │
-│  ├─ Query Agent (Database ops)                                      │
-│  ├─ Processor Agent (Data transformation)                           │
-│  └─ Research Agent (Web search & APIs)                              │
-├─────────────────────────────────────────────────────────────────────┤
-│  MCP Tools Layer                                                     │
-│  ├─ DatabaseTool (SQL execution)                                    │
-│  ├─ FileTool (File operations)                                      │
-│  ├─ CalculatorTool (Math operations)                                │
-│  ├─ SearchTool (Semantic & similarity search)                       │
-│  └─ APITool (REST & GraphQL requests)                               │
-├─────────────────────────────────────────────────────────────────────┤
-│  Persistence & Cache                                                │
-│  ├─ PostgreSQL (Tasks, audit logs)                                  │
-│  ├─ Redis (Caching, sessions, queues)                               │
-│  └─ Celery (Background jobs)                                        │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    Client["Client"]
+
+    subgraph FastAPI["FastAPI Application"]
+        subgraph Routes["API Routes"]
+            RAgent["/agent/execute, /agent/stream<br/>/agent/status, /result, /cancel"]
+            RTools["/tools"]
+            RApproval["/approval"]
+            RHealth["/health, /metrics, /auth/token"]
+        end
+
+        subgraph Middleware["Middleware Layer"]
+            MCors["CORS"]
+            MError["Error Handling"]
+            MRate["Rate Limiting (100 req/min)"]
+            MMetrics["Metrics (Prometheus)"]
+        end
+
+        subgraph Services["Service Layer"]
+            SAgent["AgentService"]
+            STask["TaskService"]
+            SLLM["LLMService (Claude API)"]
+            SCache["CacheService"]
+            SNotify["NotificationService"]
+            SApproval["ApprovalService"]
+            SMemory["MemoryService"]
+        end
+
+        subgraph Agents["Agent Layer (LangGraph)"]
+            AOrchestrator["AgentOrchestrator"]
+            AQuery["Query Agent"]
+            AProcessor["Processor Agent"]
+            AResearch["Research Agent"]
+        end
+
+        subgraph Tools["MCP Tools Layer"]
+            TDb["DatabaseTool"]
+            TFile["FileTool"]
+            TCalc["CalculatorTool"]
+            TSearch["SearchTool"]
+            TApi["APITool"]
+        end
+    end
+
+    subgraph External["External Systems"]
+        Claude["Claude API (Anthropic)"]
+        ExtAPI["Third-party REST/GraphQL APIs"]
+    end
+
+    subgraph Persistence["Persistence & Cache"]
+        Postgres[("PostgreSQL<br/>tasks, audit logs")]
+        Redis[("Redis<br/>cache, sessions, queues")]
+        Celery["Celery Workers<br/>(background jobs)"]
+    end
+
+    Client --> Routes
+    Routes --> Middleware
+    Middleware --> Services
+
+    SAgent --> AOrchestrator
+    AOrchestrator --> AQuery & AProcessor & AResearch
+
+    AQuery --> TDb
+    AProcessor --> TFile & TCalc
+    AResearch --> TSearch & TApi
+
+    TDb --> Postgres
+    TApi --> ExtAPI
+    TSearch --> ExtAPI
+
+    SLLM --> Claude
+    SAgent --> SLLM
+    SAgent --> SApproval
+    SAgent --> SMemory
+
+    STask --> Postgres
+    SCache --> Redis
+    SMemory --> Redis
+    SMemory --> Postgres
+    STask -.enqueue.-> Celery
+    Celery --> Postgres
+
+    SNotify --> ExtAPI
+
+    RApproval --> SApproval
+    RTools --> Tools
+    RAgent --> SAgent
+    RAgent --> STask
 ```
 
 ## Complete Workflows
