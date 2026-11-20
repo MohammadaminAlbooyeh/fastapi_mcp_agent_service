@@ -107,6 +107,39 @@ class TestConversationMemory:
             assert small_memory.max_history == 3
 
 
+class TestMemoryStatelessness:
+    @pytest.mark.asyncio
+    async def test_two_managers_share_history_via_redis(self) -> None:
+        """Simulates two different processes (e.g. two ECS containers) each
+        with their own AgentMemoryManager — a follow-up message routed to a
+        different container must still see the prior conversation, since
+        nothing is kept in an in-process dict."""
+        shared_redis_store: dict = {}
+
+        async def fake_get_cached(key):
+            return shared_redis_store.get(key)
+
+        async def fake_cache_result(key, value, ttl=300):
+            shared_redis_store[key] = value
+            return True
+
+        with patch.multiple(
+            "src.services.memory_service.cache_service",
+            get_cached=fake_get_cached,
+            cache_result=fake_cache_result,
+        ):
+            manager_a = AgentMemoryManager()
+            manager_b = AgentMemoryManager()
+
+            await manager_a.get_session("shared-session").add_message(
+                "user", "hello from container A"
+            )
+            history_from_b = await manager_b.get_session("shared-session").get_history()
+
+        assert len(history_from_b) == 1
+        assert history_from_b[0]["content"] == "hello from container A"
+
+
 class TestAgentMemoryManager:
     def setup_method(self) -> None:
         self.manager = AgentMemoryManager()

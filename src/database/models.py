@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
 
@@ -21,6 +21,7 @@ class TaskRecord(Base):
     result = Column(JSONB, nullable=True)
     error = Column(Text, nullable=True)
     execution_time = Column(Float, default=0.0)
+    cancel_requested = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

@@ -30,6 +30,12 @@ def execute_agent_task(
     logger.info(f"Celery task started: {task_id} ({agent_type})")
     start = time.time()
 
+    existing = _run_async(task_service.get_task(task_id))
+    if existing and existing.cancel_requested:
+        logger.info(f"Celery task {task_id} skipped: cancellation already requested")
+        _run_async(task_service.update_task_status(task_id, "cancelled"))
+        return {"task_id": task_id, "status": "cancelled"}
+
     _run_async(task_service.update_task_status(task_id, "running"))
 
     # NOTE: retrying re-runs this task from scratch, including whatever tool

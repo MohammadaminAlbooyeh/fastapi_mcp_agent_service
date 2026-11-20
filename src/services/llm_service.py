@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Any, AsyncGenerator, Dict, Optional
 
 from src.config.settings import settings
+from src.services.cost_controller import cost_controller
+
+DEFAULT_MAX_TOKENS = 4096
 
 
 class LLMService:
@@ -34,6 +37,7 @@ class LLMService:
         return self._openai_client
 
     async def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        cost_controller.check_budget(prompt, DEFAULT_MAX_TOKENS)
         provider = self._provider
         if provider == "anthropic":
             return await self._anthropic_generate(prompt, system_prompt)
@@ -44,6 +48,7 @@ class LLMService:
     async def stream_generate(
         self, prompt: str, system_prompt: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
+        cost_controller.check_budget(prompt, DEFAULT_MAX_TOKENS)
         provider = self._provider
         if provider == "anthropic":
             async for chunk in self._anthropic_stream(prompt, system_prompt):

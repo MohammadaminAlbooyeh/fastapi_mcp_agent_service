@@ -21,6 +21,11 @@ class AgentExecutionException(AgentException):
         super().__init__(message, status_code=500)
 
 
+class TokenBudgetExceededError(AgentException):
+    def __init__(self, message: str):
+        super().__init__(message, status_code=413)
+
+
 async def agent_exception_handler(
     request: Request, exc: AgentException
 ) -> JSONResponse:

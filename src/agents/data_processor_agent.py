@@ -68,6 +68,7 @@ class DataProcessorAgent(BaseAgent):
                 path=state.get("file_path", ""),
                 directory=state.get("file_path", ""),
                 content=state.get("file_content", ""),
+                user_id=state.get("user_id"),
             )
             return {"intermediate_results": [result]}
 

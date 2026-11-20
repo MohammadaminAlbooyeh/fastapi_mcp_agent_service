@@ -84,6 +84,22 @@ class TaskService:
         finally:
             db.close()
 
+    async def request_cancellation(self, task_id: str) -> Optional[Task]:
+        """Flags the task as cancel-requested in the database so any process
+        running it (same container or a different one behind the load
+        balancer) can observe the request and stop cooperatively."""
+        db = SessionLocal()
+        try:
+            crud = CRUD(db)
+            record = crud.update_task(
+                task_id, {"cancel_requested": True, "updated_at": datetime.now()}
+            )
+            if not record:
+                return None
+            return self._record_to_task(record)
+        finally:
+            db.close()
+
     async def get_task(self, task_id: str) -> Optional[Task]:
         db = SessionLocal()
         try:
@@ -116,6 +132,7 @@ class TaskService:
             result=record.result,
             error=record.error,
             execution_time=record.execution_time or 0.0,
+            cancel_requested=bool(record.cancel_requested),
             created_at=record.created_at or datetime.now(),
             updated_at=record.updated_at or datetime.now(),
         )

@@ -184,7 +184,9 @@ class TestCacheService:
         assert result == {"answer": 42}
 
     @pytest.mark.asyncio
-    async def test_cache_fallback_to_local(self, monkeypatch: MonkeyPatch) -> None:
+    async def test_cache_write_skipped_when_redis_down(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
         mock_redis = AsyncMock()
         mock_redis.setex.side_effect = Exception("Redis down")
         monkeypatch.setattr(
@@ -192,8 +194,11 @@ class TestCacheService:
         )
 
         cached = await self.service.cache_result("local-key", "local-value")
-        assert cached is True
-        assert self.service._local.get("local-key") == "local-value"
+        assert cached is False
+
+        mock_redis.get.side_effect = Exception("Redis down")
+        result = await self.service.get_cached("local-key")
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_get_cached_miss(self, monkeypatch: MonkeyPatch) -> None:

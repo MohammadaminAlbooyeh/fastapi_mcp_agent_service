@@ -28,6 +28,22 @@ services:
       redis:
         condition: service_started
 
+  beat:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    # Exactly one Beat instance should run at a time (e.g. desiredCount: 1
+    # in ECS) — the scheduled task itself is idempotent, but running
+    # multiple schedulers just wastes DB queries for no benefit.
+    command: celery -A src.config.celery_app beat --loglevel=info
+    env_file:
+      - ../.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
   db:
     image: postgres:15
     environment:

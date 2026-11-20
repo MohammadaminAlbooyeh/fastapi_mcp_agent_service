@@ -1,15 +1,39 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from src.tasks.agent_tasks import execute_agent_task
 
 
 class TestExecuteAgentTask:
+    def test_skips_execution_if_already_cancel_requested(self) -> None:
+        cancelled_task = SimpleNamespace(cancel_requested=True)
+        with patch(
+            "src.tasks.agent_tasks.task_service.get_task",
+            AsyncMock(return_value=cancelled_task),
+        ), patch(
+            "src.tasks.agent_tasks.task_service.update_task_status", AsyncMock()
+        ) as update_status, patch(
+            "src.agents.orchestrator.orchestrator.execute", AsyncMock()
+        ) as mock_execute:
+            result = execute_agent_task.run(
+                task_id="t0", query="hello", agent_type="query"
+            )
+
+        assert result == {"task_id": "t0", "status": "cancelled"}
+        update_status.assert_awaited_once_with("t0", "cancelled")
+        mock_execute.assert_not_awaited()
+
     def test_completes_successfully(self) -> None:
         with patch(
+            "src.tasks.agent_tasks.task_service.get_task",
+            AsyncMock(return_value=None),
+        ), patch(
             "src.tasks.agent_tasks.task_service.update_task_status", AsyncMock()
-        ), patch("src.tasks.agent_tasks.task_service.save_result", AsyncMock()), patch(
+        ), patch(
+            "src.tasks.agent_tasks.task_service.save_result", AsyncMock()
+        ), patch(
             "src.agents.orchestrator.orchestrator.execute",
             AsyncMock(return_value={"status": "completed"}),
         ):
@@ -25,6 +49,9 @@ class TestExecuteAgentTask:
         orchestrator) — it will fail identically every time, so it must be
         reported immediately rather than burning through Celery retries."""
         with patch(
+            "src.tasks.agent_tasks.task_service.get_task",
+            AsyncMock(return_value=None),
+        ), patch(
             "src.tasks.agent_tasks.task_service.update_task_status", AsyncMock()
         ), patch(
             "src.tasks.agent_tasks.task_service.save_error", AsyncMock()
@@ -41,8 +68,13 @@ class TestExecuteAgentTask:
 
     def test_retries_on_transient_error(self) -> None:
         with patch(
+            "src.tasks.agent_tasks.task_service.get_task",
+            AsyncMock(return_value=None),
+        ), patch(
             "src.tasks.agent_tasks.task_service.update_task_status", AsyncMock()
-        ), patch("src.tasks.agent_tasks.task_service.save_error", AsyncMock()), patch(
+        ), patch(
+            "src.tasks.agent_tasks.task_service.save_error", AsyncMock()
+        ), patch(
             "src.agents.orchestrator.orchestrator.execute",
             AsyncMock(side_effect=ConnectionError("db unreachable")),
         ), patch.object(

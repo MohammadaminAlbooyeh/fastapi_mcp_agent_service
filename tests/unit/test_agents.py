@@ -131,7 +131,11 @@ class TestDataProcessorAgentExecution:
 
         assert result["status"] == "completed"
         mock_file_tool.execute.assert_awaited_once_with(
-            action="read", path="notes.txt", directory="notes.txt", content=""
+            action="read",
+            path="notes.txt",
+            directory="notes.txt",
+            content="",
+            user_id=None,
         )
 
     @pytest.mark.asyncio

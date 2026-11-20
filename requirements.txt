@@ -17,7 +17,9 @@ alembic==1.13.0
 
 # Async & Caching
 redis>=5.0
-celery==5.3.4
+celery[sqs]==5.3.4
+aioboto3>=12.0
+tiktoken>=0.7
 
 # Utilities
 httpx==0.25.2

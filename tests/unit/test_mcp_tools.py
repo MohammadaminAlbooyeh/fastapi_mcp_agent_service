@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from src.config.settings import settings
 from src.mcp_tools.api_tool import APITool
 from src.mcp_tools.calculator_tool import CalculatorTool
 from src.mcp_tools.database_tool import DatabaseTool
@@ -82,35 +84,124 @@ class TestCalculatorTool:
         assert "calculation" in self.tool.description.lower()
 
 
+class _FakeS3ClientCtx:
+    """Stands in for `get_s3_client()`'s async context manager, yielding a
+    pre-wired mock aioboto3 S3 client."""
+
+    def __init__(self, client: Any) -> None:
+        self._client = client
+
+    async def __aenter__(self) -> Any:
+        return self._client
+
+    async def __aexit__(self, *exc: Any) -> bool:
+        return False
+
+
+class _FakePaginator:
+    def __init__(self, pages: list) -> None:
+        self._pages = pages
+
+    def paginate(self, **kwargs: Any):
+        return self._agen()
+
+    async def _agen(self):
+        for page in self._pages:
+            yield page
+
+
 class TestFileTool:
     def setup_method(self) -> None:
         self.tool = FileTool()
 
-    @pytest.mark.asyncio
-    async def test_file_not_found(self) -> None:
-        result = await self.tool.execute(
-            action="read", path="_nonexistent_file_xyz.txt"
+    def _patch_client(self, monkeypatch, client: MagicMock):
+        monkeypatch.setattr(
+            "src.mcp_tools.file_tool.get_s3_client",
+            lambda: _FakeS3ClientCtx(client),
         )
-        assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_list_nonexistent_directory(self) -> None:
+    async def test_requires_user_id(self) -> None:
+        result = await self.tool.execute(action="read", path="notes.txt")
+        assert "error" in result
+        assert "user_id" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_rejects_path_escaping_user_namespace(self) -> None:
         result = await self.tool.execute(
-            action="list", directory="_nonexistent_dir_xyz"
+            action="read", path="../other-user/secret.txt", user_id="u1"
         )
-        assert result["result"] == []
+        assert "error" in result
+        assert "escapes" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_write_and_read_round_trip(self, monkeypatch) -> None:
+        client = MagicMock()
+        client.put_object = AsyncMock(return_value={})
+        body = MagicMock()
+        body.read = AsyncMock(return_value=b"hello world")
+        client.get_object = AsyncMock(return_value={"Body": body})
+        self._patch_client(monkeypatch, client)
+
+        write_result = await self.tool.execute(
+            action="write", path="notes.txt", content="hello world", user_id="u1"
+        )
+        assert write_result["result"] is True
+        client.put_object.assert_awaited_once_with(
+            Bucket=settings.s3_bucket_name,
+            Key="users/u1/notes.txt",
+            Body=b"hello world",
+        )
+
+        read_result = await self.tool.execute(
+            action="read", path="notes.txt", user_id="u1"
+        )
+        assert read_result["result"] == "hello world"
+        client.get_object.assert_awaited_once_with(
+            Bucket=settings.s3_bucket_name, Key="users/u1/notes.txt"
+        )
+
+    @pytest.mark.asyncio
+    async def test_list_files_strips_owner_prefix(self, monkeypatch) -> None:
+        client = MagicMock()
+        client.get_paginator = MagicMock(
+            return_value=_FakePaginator(
+                [{"Contents": [{"Key": "users/u1/a.txt"}, {"Key": "users/u1/b.txt"}]}]
+            )
+        )
+        self._patch_client(monkeypatch, client)
+
+        result = await self.tool.execute(action="list", directory="", user_id="u1")
+        assert result["result"] == ["a.txt", "b.txt"]
 
     @pytest.mark.asyncio
     async def test_unknown_action(self) -> None:
-        result = await self.tool.execute(action="unknown")
+        result = await self.tool.execute(action="unknown", user_id="u1")
         assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_file_exists_nonexistent(self) -> None:
+    async def test_file_exists_nonexistent(self, monkeypatch) -> None:
+        client = MagicMock()
+        client.head_object = AsyncMock(side_effect=Exception("not found"))
+        self._patch_client(monkeypatch, client)
+
         result = await self.tool.execute(
-            action="exists", path="_nonexistent_file_xyz.txt"
+            action="exists", path="_nonexistent_file_xyz.txt", user_id="u1"
         )
         assert result["result"] is False
+
+    @pytest.mark.asyncio
+    async def test_delete_nonexistent_file_returns_false(self, monkeypatch) -> None:
+        client = MagicMock()
+        client.head_object = AsyncMock(side_effect=Exception("not found"))
+        client.delete_object = AsyncMock()
+        self._patch_client(monkeypatch, client)
+
+        result = await self.tool.execute(
+            action="delete", path="missing.txt", user_id="u1"
+        )
+        assert result["result"] is False
+        client.delete_object.assert_not_awaited()
 
 
 class TestDatabaseTool:

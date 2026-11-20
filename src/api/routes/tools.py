@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 
+from src.api.auth import verify_token
 from src.mcp_tools.tools_registry import tools_registry
 from src.models.response import ToolResponse
 
@@ -34,10 +35,12 @@ async def test_tool(
     tool_name: str = Body(..., description="Name of the tool to test"),
     action: str = Body(..., description="Action to execute"),
     params: Dict[str, Any] = Body(default={}, description="Parameters to pass"),
+    identity: dict = Depends(verify_token),
 ) -> dict:
     try:
         tool = tools_registry.get(tool_name)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found")
+    params.setdefault("user_id", identity.get("sub"))
     result = await tool.execute(action=action, **params)
     return {"tool": tool_name, "action": action, "result": result}

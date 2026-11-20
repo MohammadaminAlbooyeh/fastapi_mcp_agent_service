@@ -23,12 +23,16 @@ class TestCancelTask:
             "src.services.agent_service.task_service.get_task",
             AsyncMock(return_value=task),
         ), patch(
+            "src.services.agent_service.task_service.request_cancellation",
+            AsyncMock(),
+        ) as request_cancellation, patch(
             "src.services.agent_service.task_service.update_task_status",
             AsyncMock(),
         ) as update_status:
             result = await service.cancel("t1", reason="user requested")
 
         assert result is True
+        request_cancellation.assert_awaited_once_with("t1")
         update_status.assert_awaited_once_with(
             "t1", "cancelled", error="Cancelled: user requested"
         )
@@ -41,6 +45,9 @@ class TestCancelTask:
         with patch(
             "src.services.agent_service.task_service.get_task",
             AsyncMock(return_value=task),
+        ), patch(
+            "src.services.agent_service.task_service.request_cancellation",
+            AsyncMock(),
         ), patch(
             "src.services.agent_service.task_service.update_task_status",
             AsyncMock(),

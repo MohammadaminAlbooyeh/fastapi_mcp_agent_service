@@ -19,6 +19,7 @@ from src.api.routes.tools import router as tools_router
 from src.config.logger import logger
 from src.config.settings import settings
 from src.services.cache_service import cache_service
+from src.shutdown import register_sigterm_handler
 
 security_basic = HTTPBasic()
 
@@ -35,6 +36,7 @@ if settings.sentry_dsn:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting FastAPI MCP Agent Service...")
+    register_sigterm_handler()
     yield
     logger.info("Shutting down FastAPI MCP Agent Service...")
     await cache_service.close()

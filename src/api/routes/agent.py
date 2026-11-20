@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/v1/agent", tags=["agent"])
 @router.post("/execute", response_model=TaskResponse)
 async def execute_agent(
     request: AgentExecuteRequest,
-    _=Depends(verify_token),
+    identity: dict = Depends(verify_token),
 ) -> TaskResponse:
     if not validate_agent_type(request.agent_type):
         raise HTTPException(
@@ -27,6 +27,7 @@ async def execute_agent(
         tools=request.tools,
         max_iterations=request.max_iterations,
         timeout=request.timeout,
+        user_id=identity.get("sub"),
     )
     return TaskResponse(
         task_id=result.get("task_id", ""),
@@ -40,7 +41,7 @@ async def execute_agent(
 @router.post("/stream")
 async def stream_agent(
     request: AgentExecuteRequest,
-    _=Depends(verify_token),
+    identity: dict = Depends(verify_token),
 ):
     if not validate_agent_type(request.agent_type):
         raise HTTPException(
@@ -52,6 +53,7 @@ async def stream_agent(
             agent_type=request.agent_type,
             tools=request.tools,
             timeout=request.timeout,
+            user_id=identity.get("sub"),
         ),
         media_type="text/event-stream",
     )

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from sqlalchemy import text as sa_text
 
+from src import shutdown
 from src.database.connection import SessionLocal
 
 router = APIRouter(prefix="/api/v1/health", tags=["health"])
@@ -10,7 +12,18 @@ router = APIRouter(prefix="/api/v1/health", tags=["health"])
 
 @router.get("")
 async def health_check() -> dict:
+    """Liveness probe: always healthy as long as the process is up."""
     return {"status": "healthy", "service": "fastapi-mcp-agent-service"}
+
+
+@router.get("/ready")
+async def readiness_check():
+    """Readiness probe for the ECS/ALB target group. Returns 503 once the
+    container is draining on SIGTERM, so the load balancer stops routing new
+    traffic to it during the shutdown grace period."""
+    if shutdown.is_draining:
+        return JSONResponse(status_code=503, content={"status": "draining"})
+    return {"status": "ready"}
 
 
 @router.get("/detailed")

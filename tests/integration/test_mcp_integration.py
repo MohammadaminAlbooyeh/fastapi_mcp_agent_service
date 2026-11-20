@@ -122,20 +122,69 @@ class TestMCPIntegration:
         assert "scheme" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_file_tool_write_and_read(self, tmp_path) -> None:
+    async def test_file_tool_write_and_read(self, monkeypatch) -> None:
         tool = FileTool()
-        tool.ALLOWED_BASE = tmp_path
+
+        # In-memory fake standing in for the S3 bucket, keyed exactly like
+        # the real one (users/{user_id}/{path}), so this exercises the same
+        # key-building/auth logic the real client would see.
+        store: dict[str, bytes] = {}
+
+        client = MagicMock()
+
+        async def _put_object(Bucket, Key, Body):
+            store[Key] = Body
+            return {}
+
+        async def _get_object(Bucket, Key):
+            body = MagicMock()
+            body.read = AsyncMock(return_value=store[Key])
+            return {"Body": body}
+
+        async def _head_object(Bucket, Key):
+            if Key not in store:
+                raise Exception("not found")
+            return {}
+
+        async def _delete_object(Bucket, Key):
+            store.pop(Key, None)
+            return {}
+
+        client.put_object = AsyncMock(side_effect=_put_object)
+        client.get_object = AsyncMock(side_effect=_get_object)
+        client.head_object = AsyncMock(side_effect=_head_object)
+        client.delete_object = AsyncMock(side_effect=_delete_object)
+
+        class _Paginator:
+            def paginate(self, **kwargs):
+                return self._agen()
+
+            async def _agen(self):
+                yield {
+                    "Contents": [{"Key": k} for k in store if k.startswith("users/u1/")]
+                }
+
+        client.get_paginator = MagicMock(return_value=_Paginator())
+
+        class _Ctx:
+            async def __aenter__(self):
+                return client
+
+            async def __aexit__(self, *exc):
+                return False
+
+        monkeypatch.setattr("src.mcp_tools.file_tool.get_s3_client", lambda: _Ctx())
 
         result = await tool.execute(
-            action="write", path="test.txt", content="hello world"
+            action="write", path="test.txt", content="hello world", user_id="u1"
         )
         assert result["result"] is True
 
-        result = await tool.execute(action="read", path="test.txt")
+        result = await tool.execute(action="read", path="test.txt", user_id="u1")
         assert result["result"] == "hello world"
 
-        result = await tool.execute(action="list", directory=".")
+        result = await tool.execute(action="list", directory="", user_id="u1")
         assert len(result["result"]) > 0
 
-        result = await tool.execute(action="delete", path="test.txt")
+        result = await tool.execute(action="delete", path="test.txt", user_id="u1")
         assert result["result"] is True

@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from src.api.exceptions import TokenBudgetExceededError
 from src.config.settings import settings
 from src.services.agent_service import AgentService
 
@@ -79,6 +80,72 @@ class TestAgentServiceTimeout:
         assert result["status"] == "failed"
         assert result["error"] == "Agent execution failed"
         assert "s3cr3t" not in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_execute_stops_mid_run_when_cancellation_flag_flips(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """cancel() only flips a DB flag — a still-running execute() must
+        actually observe it and stop, not just let the run finish to
+        completion regardless."""
+        monkeypatch.setattr(
+            "src.services.agent_service.CANCELLATION_POLL_INTERVAL", 0.01
+        )
+
+        async def hang_forever(*args, **kwargs):
+            await asyncio.sleep(10)
+
+        task = SimpleNamespace(task_id="task-cancel-1")
+        cancelled_task = SimpleNamespace(task_id="task-cancel-1", cancel_requested=True)
+
+        with patch(
+            "src.services.agent_service.task_service.create_task",
+            AsyncMock(return_value=task),
+        ), patch(
+            "src.services.agent_service.task_service.update_task_status", AsyncMock()
+        ), patch(
+            "src.services.agent_service.task_service.get_task",
+            AsyncMock(return_value=cancelled_task),
+        ), patch(
+            "src.services.agent_service.task_service.save_error", AsyncMock()
+        ) as save_error, patch(
+            "src.services.agent_service.notification_service.notify_task_failed",
+            AsyncMock(),
+        ), patch(
+            "src.services.agent_service.orchestrator.execute",
+            AsyncMock(side_effect=hang_forever),
+        ):
+            service = AgentService()
+            result = await service.execute(query="slow", agent_type="query", timeout=5)
+
+        assert result["status"] == "cancelled"
+        save_error.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_execute_reports_budget_exceeded_without_generic_500(self) -> None:
+        task = SimpleNamespace(task_id="task-budget-1")
+
+        with patch(
+            "src.services.agent_service.task_service.create_task",
+            AsyncMock(return_value=task),
+        ), patch(
+            "src.services.agent_service.task_service.update_task_status", AsyncMock()
+        ), patch(
+            "src.services.agent_service.task_service.save_error", AsyncMock()
+        ), patch(
+            "src.services.agent_service.notification_service.notify_task_failed",
+            AsyncMock(),
+        ), patch(
+            "src.services.agent_service.orchestrator.execute",
+            AsyncMock(
+                side_effect=TokenBudgetExceededError("Request would use ~20000 tokens")
+            ),
+        ):
+            service = AgentService()
+            result = await service.execute(query="huge prompt", agent_type="query")
+
+        assert result["status"] == "budget_exceeded"
+        assert "tokens" in result["error"]
 
     @pytest.mark.asyncio
     async def test_execute_completes_normally_within_timeout(self) -> None:

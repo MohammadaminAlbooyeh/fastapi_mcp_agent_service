@@ -21,3 +21,4 @@ class Task(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     execution_time: float = 0.0
+    cancel_requested: bool = False

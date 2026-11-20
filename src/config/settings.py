@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import List
 
 from pydantic import model_validator
@@ -37,8 +38,21 @@ class Settings(BaseSettings):
 
     sentry_dsn: str = ""
 
+    # Local/dev default uses Redis; production sets this to an SQS broker
+    # URL (e.g. "sqs://" relying on the task's IAM role, region taken from
+    # aws_region below) via CELERY_BROKER_URL so Celery workers scale
+    # independently of any single broker process.
     celery_broker_url: str = "redis://localhost:6379/1"
     celery_result_backend: str = "redis://localhost:6379/2"
+
+    s3_bucket_name: str = ""
+    aws_region: str = "us-east-1"
+
+    max_tokens_per_request: int = 8000
+    semantic_cache_size: int = 50
+    semantic_cache_threshold: float = 0.95
+
+    graceful_shutdown_seconds: int = 30
 
     @property
     def cors_allowed_origins(self) -> List[str]:
@@ -57,7 +71,13 @@ class Settings(BaseSettings):
                 )
         return self
 
-    model_config = {"env_file": ".env", "case_sensitive": False}
+    # Production reads configuration strictly from process env vars (populated
+    # by ECS from Secrets Manager / SSM Parameter Store at deploy time), never
+    # from a local .env file bundled in the image.
+    model_config = {
+        "env_file": None if os.environ.get("ENVIRONMENT") == "production" else ".env",
+        "case_sensitive": False,
+    }
 
 
 settings = Settings()

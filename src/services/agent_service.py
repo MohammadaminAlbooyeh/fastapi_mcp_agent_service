@@ -6,6 +6,7 @@ import time
 from typing import Any, AsyncGenerator, Dict, Optional
 
 from src.agents.orchestrator import orchestrator
+from src.api.exceptions import TokenBudgetExceededError
 from src.config.logger import logger
 from src.config.settings import settings
 from src.services.approval_service import approval_service
@@ -14,15 +15,43 @@ from src.services.notification_service import notification_service
 from src.services.task_service import task_service
 
 DEFAULT_EXECUTION_TIMEOUT = 60
+CANCELLATION_POLL_INTERVAL = 0.5
 
 
 class AgentService:
+    async def _run_cancellable(
+        self, task_id: str, coro: Any, timeout: float
+    ) -> Dict[str, Any]:
+        """Runs `coro` as an asyncio task, racing it against both the
+        existing timeout and a poller that watches the DB-backed
+        `cancel_requested` flag (set by `cancel()`, possibly from a
+        different process behind the load balancer). Cancellation
+        propagates at the coroutine's next await point — the natural
+        "between steps" checkpoint for a LangGraph pipeline whose nodes are
+        all I/O-bound tool/LLM calls."""
+        exec_task: asyncio.Task = asyncio.ensure_future(coro)
+
+        async def _watch_for_cancellation() -> None:
+            while not exec_task.done():
+                await asyncio.sleep(CANCELLATION_POLL_INTERVAL)
+                current = await task_service.get_task(task_id)
+                if current and current.cancel_requested:
+                    exec_task.cancel()
+                    return
+
+        watcher = asyncio.ensure_future(_watch_for_cancellation())
+        try:
+            return await asyncio.wait_for(exec_task, timeout=timeout)
+        finally:
+            watcher.cancel()
+
     async def execute(
         self,
         query: str,
         agent_type: str,
         tools: Optional[list[str]] = None,
         session_id: Optional[str] = None,
+        user_id: Optional[str] = None,
         require_approval: bool = False,
         **kwargs: Any,
     ) -> Dict[str, Any]:
@@ -59,9 +88,14 @@ class AgentService:
             # tool call (e.g. a slow external API) would hang the request forever.
             kwargs.pop("max_iterations", None)
             timeout = kwargs.pop("timeout", None) or DEFAULT_EXECUTION_TIMEOUT
-            result = await asyncio.wait_for(
+            result = await self._run_cancellable(
+                task_id,
                 orchestrator.execute(
-                    query=query, agent_type=agent_type, tools=tools, **kwargs
+                    query=query,
+                    agent_type=agent_type,
+                    tools=tools,
+                    user_id=user_id,
+                    **kwargs,
                 ),
                 timeout=timeout,
             )
@@ -80,6 +114,18 @@ class AgentService:
                 "result": result,
                 "execution_time": elapsed,
             }
+        except asyncio.CancelledError:
+            elapsed = time.time() - start
+            error = "Cancelled by request"
+            await task_service.save_error(task_id, error)
+            await task_service.update_task_status(task_id, "cancelled", error=error)
+            logger.info(f"Task {task_id} cancelled mid-execution")
+            return {
+                "task_id": task_id,
+                "status": "cancelled",
+                "error": error,
+                "execution_time": elapsed,
+            }
         except asyncio.TimeoutError:
             elapsed = time.time() - start
             error = f"Execution timed out after {timeout}s"
@@ -89,6 +135,16 @@ class AgentService:
                 "task_id": task_id,
                 "status": "timeout",
                 "error": error,
+                "execution_time": elapsed,
+            }
+        except TokenBudgetExceededError as e:
+            elapsed = time.time() - start
+            await task_service.save_error(task_id, e.message)
+            await notification_service.notify_task_failed(task_id, e.message)
+            return {
+                "task_id": task_id,
+                "status": "budget_exceeded",
+                "error": e.message,
                 "execution_time": elapsed,
             }
         except Exception as e:
@@ -111,6 +167,7 @@ class AgentService:
         query: str,
         agent_type: str,
         session_id: Optional[str] = None,
+        user_id: Optional[str] = None,
         **kwargs: Any,
     ) -> AsyncGenerator[str, None]:
         task = await task_service.create_task(query, agent_type)
@@ -124,7 +181,9 @@ class AgentService:
         kwargs.pop("max_iterations", None)
         try:
             result = await asyncio.wait_for(
-                orchestrator.execute(query=query, agent_type=agent_type, **kwargs),
+                orchestrator.execute(
+                    query=query, agent_type=agent_type, user_id=user_id, **kwargs
+                ),
                 timeout=timeout,
             )
             llm_text = result.get("result", {}).get("llm_response", "")
@@ -152,6 +211,10 @@ class AgentService:
         task = await task_service.get_task(task_id)
         if task and task.status in ("pending", "running"):
             error = f"Cancelled: {reason}" if reason else None
+            # Flips the DB flag first so any process actually running this
+            # task (same container or a different one) observes it via
+            # _run_cancellable's poller, then records the terminal status.
+            await task_service.request_cancellation(task_id)
             await task_service.update_task_status(task_id, "cancelled", error=error)
             logger.info(
                 f"Task cancelled: {task_id}" + (f" ({reason})" if reason else "")
